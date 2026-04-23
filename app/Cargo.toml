@@ -9,3 +9,6 @@ path = "main.rs"
 
 [dependencies]
 common.path = "../common"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys.workspace = true

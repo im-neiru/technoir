@@ -38,8 +38,15 @@ impl State {
 
     pub(super) fn enter_loop(mut self) {
         unsafe {
+            let state_ptr = (&mut self) as *mut Self;
+
+            SetWindowLongPtrW(
+                self.manager_win.as_ptr(),
+                GWLP_USERDATA,
+                state_ptr.addr().cast_signed(),
+            );
+
             self.init_tray();
-            self.show_tray_menu();
         };
 
         unsafe {
@@ -68,9 +75,26 @@ unsafe extern "system" fn window_proc(
     wparam: WPARAM,
     lparam: LPARAM,
 ) -> LRESULT {
+    let state = NonNull::<State>::new(GetWindowLongPtrW(hwnd, GWLP_USERDATA) as _);
+
     match msg {
+        val if val == WM_USER + 1 => {
+            if let Some(mut state_ptr) = state {
+                let state = state_ptr.as_mut();
+
+                match lparam as u32 {
+                    WM_LBUTTONUP => state.open_manager(),
+                    WM_RBUTTONUP => state.show_tray_menu(),
+                    _ => {}
+                }
+            }
+
+            0
+        }
+
         WM_DESTROY => {
             PostQuitMessage(0);
+
             0
         }
 

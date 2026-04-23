@@ -8,3 +8,6 @@ name = "ui"
 path = "lib.rs"
 
 [dependencies]
+
+[target.'cfg(windows)'.dependencies]
+windows-sys.workspace = true

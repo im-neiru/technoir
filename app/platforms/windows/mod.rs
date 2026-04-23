@@ -1,10 +1,7 @@
-use core::ptr::{self, NonNull};
+mod state;
 
-use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
+pub(crate) fn run(config: &crate::config::Config) {
+    let state = state::State::new(config);
 
-pub(crate) fn run() {
-    let instance = unsafe { NonNull::new(GetModuleHandleW(ptr::null_mut())) }
-        .expect("Failed to retrieve module handle");
-
-    println!("{instance:#?}")
+    state.enter_loop();
 }

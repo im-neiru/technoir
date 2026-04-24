@@ -24,9 +24,7 @@ use vello::wgpu;
 pub struct Manager {
     hwnd: NonNull<c_void>,
     is_open: bool,
-    wgpu_surface: wgpu::Surface<'static>,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
+    graphics: engine::Renderer,
 }
 
 impl Manager {
@@ -35,48 +33,53 @@ impl Manager {
         visible: bool,
         wgpu_instance: &wgpu::Instance,
     ) -> Self {
-        let win = unsafe { Self::new_manager_win(hinstance, visible) };
-
+        let hwnd = unsafe { Self::new_manager_win(hinstance, visible) };
         let wgpu_surface = unsafe {
             wgpu_instance
                 .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
                     raw_display_handle: RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
 
                     raw_window_handle: RawWindowHandle::Win32(Win32WindowHandle::new(
-                        win.addr().cast_signed(),
+                        hwnd.addr().cast_signed(),
                     )),
                 })
                 .expect("Failed to create wgpu::Surface")
         };
 
-        let adapter = wgpu_instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
-                compatible_surface: Some(&wgpu_surface),
-                force_fallback_adapter: false,
-            })
-            .await
-            .expect("No compatible adapter");
+        let (width, height) = {
+            let mut rect = unsafe { mem::zeroed() };
+            unsafe { GetClientRect(hwnd.as_ptr() as _, &mut rect) };
+            (
+                (rect.right - rect.left).max(1) as u32,
+                (rect.bottom - rect.top).max(1) as u32,
+            )
+        };
 
-        let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor {
-                label: None,
-                required_features: wgpu::Features::empty(),
-                experimental_features: wgpu::ExperimentalFeatures::disabled(),
-                required_limits: wgpu::Limits::default(),
-                memory_hints: Default::default(),
-                trace: wgpu::Trace::Off,
-            })
-            .await
-            .expect("Failed to request device");
+        let graphics = engine::Renderer::new(wgpu_instance, wgpu_surface, width, height).await;
 
         Self {
-            hwnd: win,
+            hwnd,
             is_open: visible,
-            wgpu_surface,
-            device,
-            queue,
+            graphics,
         }
+    }
+
+    pub(super) fn render(&mut self) {
+        let mut scene = vello::Scene::new();
+
+        scene.fill(
+            vello::peniko::Fill::NonZero,
+            vello::kurbo::Affine::IDENTITY,
+            vello::peniko::Color::from_rgb8(242, 140, 168),
+            None,
+            &vello::kurbo::Circle::new((420.0, 200.0), 120.0),
+        );
+
+        self.graphics.render_scene(&scene);
+    }
+
+    pub(super) fn resize(&mut self, width: u32, height: u32) {
+        self.graphics.resize(width, height);
     }
 }
 

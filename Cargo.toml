@@ -3,6 +3,8 @@ members = ["app", "common", "engine", "ui"]
 resolver = "3"
 
 [workspace.dependencies]
+raw-window-handle = "0.6.2"
+wgpu = "29.0.1"
 windows-sys = { version = "0.61.2", features = [
     "Win32_Foundation",
     "Win32_Graphics_Gdi",

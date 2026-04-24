@@ -3,7 +3,9 @@ use core::{
     ptr::{self, NonNull},
 };
 
-use windows_sys::Win32::{Foundation::*, UI::WindowsAndMessaging::*};
+use windows_sys::Win32::{
+    Foundation::*, Graphics::Gdi::InvalidateRect, UI::WindowsAndMessaging::*,
+};
 
 use super::state::State;
 
@@ -72,11 +74,7 @@ pub(super) unsafe extern "system" fn window_proc(
             }
 
             unsafe {
-                windows_sys::Win32::Graphics::Gdi::InvalidateRect(
-                    hwnd,
-                    ptr::null(),
-                    0,
-                );
+                InvalidateRect(hwnd, ptr::null(), 0);
             }
 
             0

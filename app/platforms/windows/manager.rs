@@ -25,6 +25,7 @@ pub struct Manager {
     hwnd: NonNull<c_void>,
     is_open: bool,
     graphics: engine::Renderer,
+    start_time: std::time::Instant,
 }
 
 impl Manager {
@@ -61,18 +62,23 @@ impl Manager {
             hwnd,
             is_open: visible,
             graphics,
+            start_time: std::time::Instant::now(),
         }
     }
 
     pub(super) fn render(&mut self) {
         let mut scene = vello::Scene::new();
 
+        let time = self.start_time.elapsed().as_secs_f64();
+        let cx = 420.0 + (time * 2.0).sin() * 150.0;
+        let cy = 200.0 + (time * 3.0).cos() * 100.0;
+
         scene.fill(
             vello::peniko::Fill::NonZero,
             vello::kurbo::Affine::IDENTITY,
             vello::peniko::Color::from_rgb8(242, 140, 168),
             None,
-            &vello::kurbo::Circle::new((420.0, 200.0), 120.0),
+            &vello::kurbo::Circle::new((cx, cy), 120.0),
         );
 
         self.graphics.render_scene(&scene);

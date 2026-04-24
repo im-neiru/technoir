@@ -64,6 +64,26 @@ pub(super) unsafe extern "system" fn window_proc(
                 DefWindowProcW(hwnd, msg, wparam, lparam)
             }
         }
+        WM_PAINT => {
+            if let Some(mut state_ptr) = state {
+                let state = state_ptr.as_mut();
+
+                state.manager.render();
+            }
+
+            0
+        }
+        WM_SIZE => {
+            if let Some(mut state_ptr) = state {
+                let state = state_ptr.as_mut();
+                let width = (lparam & 0xFFFF) as u32;
+                let height = (lparam >> 16) as u32;
+
+                state.manager.resize(width, height);
+            }
+
+            0
+        }
         WM_DESTROY => {
             PostQuitMessage(0);
 
@@ -71,17 +91,5 @@ pub(super) unsafe extern "system" fn window_proc(
         }
 
         _ => DefWindowProcW(hwnd, msg, wparam, lparam),
-    }
-}
-
-#[derive(Debug)]
-pub(super) struct WindowsDisplayHandle;
-
-impl raw_window_handle::HasDisplayHandle for WindowsDisplayHandle {
-    #[inline]
-    fn display_handle(
-        &self,
-    ) -> Result<raw_window_handle::DisplayHandle<'_>, raw_window_handle::HandleError> {
-        Ok(raw_window_handle::DisplayHandle::windows())
     }
 }

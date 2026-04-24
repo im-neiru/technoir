@@ -337,6 +337,9 @@ dependencies = [
 [[package]]
 name = "engine"
 version = "0.1.0"
+dependencies = [
+ "vello",
+]
 
 [[package]]
 name = "equivalent"
@@ -1214,6 +1217,7 @@ name = "technoir"
 version = "0.1.0"
 dependencies = [
  "common",
+ "engine",
  "raw-window-handle",
  "smol",
  "vello",

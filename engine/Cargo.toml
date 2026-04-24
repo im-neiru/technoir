@@ -8,3 +8,4 @@ name = "engine"
 path = "lib.rs"
 
 [dependencies]
+vello.workspace = true

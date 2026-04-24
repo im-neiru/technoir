@@ -1,3 +1,5 @@
+mod event_loop;
+mod manager;
 mod state;
 
 pub(crate) fn run(config: &crate::config::Config) {

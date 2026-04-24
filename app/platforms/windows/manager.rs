@@ -14,20 +14,43 @@ use windows_sys::{
     w,
 };
 
+use raw_window_handle::{
+    RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle,
+};
+
 use super::event_loop::{WM_APP_TERMINATE, WM_USER_TRAY};
 
 pub struct Manager {
     hwnd: NonNull<c_void>,
     is_open: bool,
+    wgpu_surface: wgpu::Surface<'static>,
 }
 
 impl Manager {
-    pub(super) fn new(hinstance: NonNull<c_void>, visible: bool) -> Self {
+    pub(super) fn new(
+        hinstance: NonNull<c_void>,
+        visible: bool,
+        wgpu_instance: &wgpu::Instance,
+    ) -> Self {
         let win = unsafe { Self::new_manager_win(hinstance, visible) };
+
+        let wgpu_surface = unsafe {
+            wgpu_instance
+                .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
+                    raw_display_handle: Some(
+                        RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
+                    ),
+                    raw_window_handle: RawWindowHandle::Win32(Win32WindowHandle::new(
+                        win.addr().cast_signed(),
+                    )),
+                })
+                .expect("Failed to create wgpu::Surface")
+        };
 
         Self {
             hwnd: win,
             is_open: visible,
+            wgpu_surface,
         }
     }
 }

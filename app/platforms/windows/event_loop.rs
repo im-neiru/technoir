@@ -73,3 +73,15 @@ pub(super) unsafe extern "system" fn window_proc(
         _ => DefWindowProcW(hwnd, msg, wparam, lparam),
     }
 }
+
+#[derive(Debug)]
+pub(super) struct WindowsDisplayHandle;
+
+impl raw_window_handle::HasDisplayHandle for WindowsDisplayHandle {
+    #[inline]
+    fn display_handle(
+        &self,
+    ) -> Result<raw_window_handle::DisplayHandle<'_>, raw_window_handle::HandleError> {
+        Ok(raw_window_handle::DisplayHandle::windows())
+    }
+}

@@ -24,10 +24,12 @@ pub struct Manager {
     hwnd: NonNull<c_void>,
     is_open: bool,
     wgpu_surface: wgpu::Surface<'static>,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
 }
 
 impl Manager {
-    pub(super) fn new(
+    pub(super) async fn new(
         hinstance: NonNull<c_void>,
         visible: bool,
         wgpu_instance: &wgpu::Instance,
@@ -47,10 +49,33 @@ impl Manager {
                 .expect("Failed to create wgpu::Surface")
         };
 
+        let adapter = wgpu_instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::default(),
+                compatible_surface: Some(&wgpu_surface),
+                force_fallback_adapter: false,
+            })
+            .await
+            .expect("No compatible adapter");
+
+        let (device, queue) = adapter
+            .request_device(&wgpu::DeviceDescriptor {
+                label: None,
+                required_features: wgpu::Features::empty(),
+                experimental_features: wgpu::ExperimentalFeatures::disabled(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: Default::default(),
+                trace: wgpu::Trace::Off,
+            })
+            .await
+            .expect("Failed to request device");
+
         Self {
             hwnd: win,
             is_open: visible,
             wgpu_surface,
+            device,
+            queue,
         }
     }
 }

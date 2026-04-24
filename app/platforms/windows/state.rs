@@ -12,7 +12,7 @@ pub struct State {
 }
 
 impl State {
-    pub(super) fn new(config: &crate::config::Config) -> Self {
+    pub(super) async fn new(config: &crate::config::Config) -> Self {
         let hinstance = unsafe { NonNull::new(GetModuleHandleW(ptr::null_mut())) }
             .expect("Failed to retrieve module handle");
 
@@ -27,7 +27,7 @@ impl State {
             display: Some(Box::new(event_loop::WindowsDisplayHandle)),
         });
 
-        let manager = Manager::new(hinstance, config.open_manager, &wgpu_instance);
+        let manager = Manager::new(hinstance, config.open_manager, &wgpu_instance).await;
 
         Self {
             manager,

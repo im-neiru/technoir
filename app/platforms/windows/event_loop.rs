@@ -71,6 +71,14 @@ pub(super) unsafe extern "system" fn window_proc(
                 state.manager.render();
             }
 
+            unsafe {
+                windows_sys::Win32::Graphics::Gdi::InvalidateRect(
+                    hwnd,
+                    ptr::null(),
+                    0,
+                );
+            }
+
             0
         }
         WM_SIZE => {

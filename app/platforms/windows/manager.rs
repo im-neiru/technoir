@@ -19,6 +19,7 @@ use raw_window_handle::{
 };
 
 use super::event_loop::{WM_APP_TERMINATE, WM_USER_TRAY};
+use vello::wgpu;
 
 pub struct Manager {
     hwnd: NonNull<c_void>,
@@ -39,9 +40,8 @@ impl Manager {
         let wgpu_surface = unsafe {
             wgpu_instance
                 .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
-                    raw_display_handle: Some(
-                        RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
-                    ),
+                    raw_display_handle: RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
+
                     raw_window_handle: RawWindowHandle::Win32(Win32WindowHandle::new(
                         win.addr().cast_signed(),
                     )),

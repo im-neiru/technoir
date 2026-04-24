@@ -1,4 +1,7 @@
-use core::ptr::{self, NonNull};
+use core::{
+    ffi::c_void,
+    ptr::{self, NonNull},
+};
 
 use vello::wgpu;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
@@ -6,6 +9,7 @@ use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use super::manager::Manager;
 
 pub struct State {
+    pub(super) hinstance: NonNull<c_void>,
     pub(super) wgpu_instance: wgpu::Instance,
     pub(super) manager: Manager,
 }
@@ -28,6 +32,7 @@ impl State {
         let manager = Manager::new(hinstance, config.open_manager, &wgpu_instance).await;
 
         Self {
+            hinstance,
             manager,
             wgpu_instance,
         }

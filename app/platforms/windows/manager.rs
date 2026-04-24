@@ -96,13 +96,22 @@ impl Manager {
         let wc = unsafe {
             let cursor = LoadCursorW(ptr::null_mut(), IDC_ARROW);
 
+            let app_icon = LoadImageW(
+                hinstance.as_ptr(),
+                1 as PCWSTR,
+                IMAGE_ICON,
+                0,
+                0,
+                LR_DEFAULTSIZE | LR_SHARED,
+            ) as HICON;
+
             WNDCLASSW {
                 style: CS_HREDRAW | CS_VREDRAW,
                 lpfnWndProc: Some(super::event_loop::window_proc),
                 hInstance: hinstance.as_ptr(),
                 lpszClassName: Self::SANDBOX_WIN_NAME,
                 hCursor: cursor,
-
+                hIcon: app_icon,
                 ..mem::zeroed()
             }
         };
@@ -142,12 +151,12 @@ impl Manager {
                 state_ptr.addr().cast_signed().get(),
             );
 
-            self.init_tray();
+            self.init_tray(state_ptr.as_ref().hinstance);
         };
     }
 
     #[allow(unsafe_op_in_unsafe_fn)]
-    unsafe fn init_tray(&self) {
+    unsafe fn init_tray(&self, hinstance: NonNull<c_void>) {
         let mut nid: NOTIFYICONDATAW = mem::zeroed();
 
         nid.cbSize = mem::size_of::<NOTIFYICONDATAW>() as u32;
@@ -157,7 +166,16 @@ impl Manager {
         nid.uFlags = NIF_MESSAGE | NIF_TIP | NIF_ICON;
         nid.uCallbackMessage = WM_USER_TRAY;
 
-        nid.hIcon = LoadIconW(ptr::null_mut(), IDI_APPLICATION);
+        let h_icon = LoadImageW(
+            hinstance.as_ptr(),
+            1 as PCWSTR,
+            IMAGE_ICON,
+            0,
+            0,
+            LR_DEFAULTSIZE | LR_SHARED,
+        ) as HICON;
+
+        nid.hIcon = h_icon;
 
         let tip = "Open Manager\0".encode_utf16().collect::<Vec<u16>>();
         nid.szTip[..tip.len()].copy_from_slice(&tip);

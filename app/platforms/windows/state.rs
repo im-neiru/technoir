@@ -68,6 +68,9 @@ impl Drop for State {
     }
 }
 
+const WM_APP_TERMINATE: u32 = WM_APP + 1;
+const WM_USER_TRAY: u32 = WM_USER + 1;
+
 #[allow(unsafe_op_in_unsafe_fn)]
 unsafe extern "system" fn window_proc(
     hwnd: HWND,
@@ -78,7 +81,7 @@ unsafe extern "system" fn window_proc(
     let state = NonNull::<State>::new(GetWindowLongPtrW(hwnd, GWLP_USERDATA) as _);
 
     match msg {
-        val if val == WM_USER + 1 => {
+        WM_USER_TRAY => {
             if let Some(mut state_ptr) = state {
                 let state = state_ptr.as_mut();
 
@@ -91,7 +94,22 @@ unsafe extern "system" fn window_proc(
 
             0
         }
+        WM_APP_TERMINATE => {
+            PostQuitMessage(0);
+            0
+        }
+        WM_CLOSE => {
+            if let Some(mut state) = state {
+                unsafe {
+                    ShowWindow(state.as_ref().manager_win.as_ptr(), SW_HIDE);
+                    state.as_mut().is_manager_open = false;
+                }
 
+                0
+            } else {
+                DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
+        }
         WM_DESTROY => {
             PostQuitMessage(0);
 
@@ -192,12 +210,13 @@ impl State {
     }
 
     fn open_manager(&mut self) {
-        if self.is_manager_open {
-            return; // TODO
+        if !self.is_manager_open {
+            unsafe { ShowWindow(self.manager_win.as_ptr(), SW_SHOW) };
+            self.is_manager_open = true;
         }
     }
 
     fn terminate_program(&mut self) {
-        // TODO
+        unsafe { PostMessageW(self.manager_win.as_ptr(), WM_APP_TERMINATE, 0, 0) };
     }
 }

@@ -4,6 +4,8 @@ pub(crate) struct Config {
 
 impl Config {
     pub(crate) fn load() -> Self {
-        Self { open_manager: true }
+        Self {
+            open_manager: false,
+        }
     }
 }

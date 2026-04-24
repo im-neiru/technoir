@@ -8,6 +8,9 @@ name = "technoir"
 path = "main.rs"
 
 [dependencies]
+raw-window-handle.workspace = true
+wgpu.workspace = true
+
 common.path = "../common"
 
 [target.'cfg(windows)'.dependencies]

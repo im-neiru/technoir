@@ -9,6 +9,7 @@ pub struct Renderer {
     target_texture: wgpu::Texture,
     target_view: wgpu::TextureView,
     config: wgpu::SurfaceConfiguration,
+    target_format: wgpu::TextureFormat,
 }
 
 impl Renderer {
@@ -58,7 +59,8 @@ impl Renderer {
         )
         .expect("Failed to create renderer");
 
-        let (target_texture, target_view) = Self::create_target(&device, width, height);
+        let (target_texture, target_view) =
+            Self::create_target(&device, width, height, surface_format);
 
         let config = vello::wgpu::SurfaceConfiguration {
             usage: vello::wgpu::TextureUsages::RENDER_ATTACHMENT
@@ -81,6 +83,7 @@ impl Renderer {
             target_texture,
             target_view,
             config,
+            target_format: surface_format,
         }
     }
 
@@ -88,6 +91,7 @@ impl Renderer {
         device: &wgpu::Device,
         width: u32,
         height: u32,
+        format: wgpu::TextureFormat,
     ) -> (wgpu::Texture, wgpu::TextureView) {
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Vello Storage Target"),
@@ -99,7 +103,7 @@ impl Renderer {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
+            format,
             usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
             view_formats: &[],
         });
@@ -107,7 +111,7 @@ impl Renderer {
         (texture, view)
     }
 
-    pub fn render_scene(&mut self, scene: &Scene) {
+    pub fn render_scene(&mut self, scene: &Scene, base_color: vello::peniko::Color) {
         let frame = self
             .wgpu_surface
             .get_current_texture()
@@ -120,10 +124,10 @@ impl Renderer {
                 scene,
                 &self.target_view,
                 &vello::RenderParams {
-                    base_color: vello::peniko::Color::BLACK,
+                    base_color,
                     width: self.config.width,
                     height: self.config.height,
-                    antialiasing_method: vello::AaConfig::Msaa16,
+                    antialiasing_method: vello::AaConfig::Area,
                 },
             )
             .unwrap();
@@ -157,7 +161,7 @@ impl Renderer {
 
         // recreate target
         self.target_texture.destroy();
-        let (texture, view) = Self::create_target(&self.device, width, height);
+        let (texture, view) = Self::create_target(&self.device, width, height, self.target_format);
         self.target_texture = texture;
         self.target_view = view;
     }

@@ -3,9 +3,7 @@ use core::{
     ptr::{self, NonNull},
 };
 
-use windows_sys::Win32::{
-    Foundation::*, Graphics::Gdi::InvalidateRect, UI::WindowsAndMessaging::*,
-};
+use windows_sys::Win32::{Foundation::*, Graphics::Gdi::ValidateRect, UI::WindowsAndMessaging::*};
 
 use super::state::State;
 
@@ -71,10 +69,10 @@ pub(super) unsafe extern "system" fn window_proc(
                 let state = state_ptr.as_mut();
 
                 state.manager.render();
-            }
 
-            unsafe {
-                InvalidateRect(hwnd, ptr::null(), 0);
+                unsafe {
+                    ValidateRect(hwnd, ptr::null());
+                }
             }
 
             0

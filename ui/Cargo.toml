@@ -8,6 +8,7 @@ name = "ui"
 path = "lib.rs"
 
 [dependencies]
+vello.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 windows-sys.workspace = true

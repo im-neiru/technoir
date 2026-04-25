@@ -1229,6 +1229,7 @@ dependencies = [
  "engine",
  "raw-window-handle",
  "smol",
+ "ui",
  "vello",
  "windows-sys",
  "winresource",
@@ -1306,6 +1307,7 @@ checksum = "756daf9b1013ebe47a8776667b466417e2d4c5679d441c26230efd9ef78692db"
 name = "ui"
 version = "0.1.0"
 dependencies = [
+ "vello",
  "windows-sys",
 ]
 

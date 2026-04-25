@@ -7,11 +7,13 @@ use vello::wgpu;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 
 use super::manager::Manager;
+use engine::Screen;
 
 pub struct State {
     pub(super) hinstance: NonNull<c_void>,
     pub(super) wgpu_instance: wgpu::Instance,
     pub(super) manager: Manager,
+    pub(super) screens: Vec<Screen>,
 }
 
 impl State {
@@ -35,6 +37,7 @@ impl State {
             hinstance,
             manager,
             wgpu_instance,
+            screens: Screen::get_screens(),
         }
     }
 

@@ -6,14 +6,14 @@ use core::{
 use vello::wgpu;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 
-use super::{desktop_handles::DesktopHandles, manager::Manager, screen::Screen};
+use super::manager::Manager;
+use super::wallpaper_driver::WallpaperDriver;
 
 pub struct State {
     pub(super) hinstance: NonNull<c_void>,
     pub(super) wgpu_instance: wgpu::Instance,
     pub(super) manager: Manager,
-    pub(super) screens: Vec<Screen>,
-    pub(super) desktop_handles: DesktopHandles,
+    pub(super) driver: WallpaperDriver,
 }
 
 impl State {
@@ -32,26 +32,19 @@ impl State {
         });
 
         let manager = Manager::new(hinstance, config.open_manager, &wgpu_instance).await;
-        let mut screens = Screen::get_screens();
-        let desktop_handles = DesktopHandles::find();
 
-        let target_parent = desktop_handles.worker_w.unwrap_or(desktop_handles.progman);
-
-        for s in screens.iter_mut() {
-            s.spawn_target(hinstance, target_parent);
-        }
+        let driver = WallpaperDriver::new();
 
         Self {
             hinstance,
             manager,
             wgpu_instance,
-            screens,
-            desktop_handles,
+            driver,
         }
     }
 
-    pub(super) fn enter_loop(self) {
-        self.desktop_handles.redraw();
-        super::event_loop::enter_loop(self);
+    pub(super) fn enter_ui(mut self) {
+        self.driver.run();
+        super::manager::enter_loop(self);
     }
 }

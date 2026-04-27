@@ -16,3 +16,4 @@ windows-sys = { version = "0.61.2", features = [
     "Win32_System_LibraryLoader",
     "Win32_System_Threading",
 ] }
+wasapi = "0.23.0"

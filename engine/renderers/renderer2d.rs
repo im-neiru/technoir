@@ -1,9 +1,11 @@
+use std::num::NonZero;
+
 use vello::{Renderer as VelloRenderer, RendererOptions, wgpu};
 
 use super::Renderer;
 
 pub struct Renderer2d {
-    renderer: Renderer,
+    pub(super) renderer: Renderer,
     vello: VelloRenderer,
     target_texture: wgpu::Texture,
     target_view: wgpu::TextureView,
@@ -31,7 +33,7 @@ impl Renderer2d {
             RendererOptions {
                 use_cpu: false,
                 antialiasing_support: vello::AaSupport::all(),
-                num_init_threads: None,
+                num_init_threads: NonZero::new(1),
                 pipeline_cache: None,
             },
         )

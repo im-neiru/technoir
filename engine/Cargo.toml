@@ -13,6 +13,7 @@ raw-window-handle.workspace = true
 vello.workspace = true
 wasapi.workspace = true
 rustfft.workspace = true
+image.workspace = true
 
 ui.path = "../ui"
 

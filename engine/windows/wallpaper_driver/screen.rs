@@ -54,7 +54,7 @@ impl Screen {
             }
         }
 
-        screens
+        screens.into_iter().take(1).collect()
     }
 
     pub(super) fn store_state(&mut self) {

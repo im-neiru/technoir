@@ -6,59 +6,18 @@ use crate::samplers::SpectrumAudioLoopback;
 pub struct Visualizer {
     renderer: Renderer,
 
-    prev_spectrum_l: [f32; BAR_COUNT],
-    prev_spectrum_r: [f32; BAR_COUNT],
-
-    bar_layout: Vec<BarLayoutItem>,
+    prev_spectrum_l: [f32; SAMPLE_COUNT],
+    prev_spectrum_r: [f32; SAMPLE_COUNT],
 
     prev_lum: f32,
-    lum_buffer: wgpu::Buffer,
+    uniforms_buffer: wgpu::Buffer,
     bg_pipeline: wgpu::RenderPipeline,
     bg_bind_group: Option<wgpu::BindGroup>,
-    bg_sampler: wgpu::Sampler,
-    bg_bind_group_layout: wgpu::BindGroupLayout,
 }
 
-const BAR_COUNT: usize = 64;
+const SAMPLE_COUNT: usize = 64;
 
-#[derive(Clone, Copy)]
-struct BarLayoutItem {
-    x: f32,
-    w: f32,
-}
-
-const BG_SHADER: &str = "
-struct VertexOutput {
-    @builtin(position) clip_position: vec4<f32>,
-    @location(0) tex_coords: vec2<f32>,
-};
-
-struct BrightnessUniform {
-    value: f32,
-};
-
-@group(0) @binding(0) var t_diffuse: texture_2d<f32>;
-@group(0) @binding(1) var s_diffuse: sampler;
-
-@group(0) @binding(2) var<uniform> brightness: BrightnessUniform;
-
-@vertex
-fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
-    var out: VertexOutput;
-    let x = f32(1 - i32(in_vertex_index)) * 3.0;
-    let y = f32(i32(in_vertex_index & 1u) * 2 - 1) * 3.0;
-    out.clip_position = vec4<f32>(x, y, 0.0, 1.0);
-    out.tex_coords = vec2<f32>(x * 0.5 + 0.5, 1.0 - (y * 0.5 + 0.5));
-    return out;
-}
-
-@fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let color = textureSample(t_diffuse, s_diffuse, in.tex_coords);
-
-    return vec4<f32>(color.rgb * brightness.value, color.a);
-}
-";
+const BG_SHADER: &str = include_str!("./shaders/visualizer.wgsl");
 
 impl Visualizer {
     pub async fn new(
@@ -80,9 +39,9 @@ impl Visualizer {
             ..Default::default()
         });
 
-        let lum_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Brightness Buffer"),
-            size: 16,
+        let uniforms_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Uniforms Buffer"),
+            size: core::mem::size_of::<Uniforms>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -148,7 +107,7 @@ impl Visualizer {
                 entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: surface_format,
-                    blend: Some(wgpu::BlendState::REPLACE),
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
                 compilation_options: Default::default(),
@@ -178,7 +137,7 @@ impl Visualizer {
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
-                        resource: lum_buffer.as_entire_binding(),
+                        resource: uniforms_buffer.as_entire_binding(),
                     },
                 ],
             })
@@ -186,14 +145,11 @@ impl Visualizer {
 
         let mut result = Self {
             renderer,
-            prev_spectrum_l: [0.0; BAR_COUNT],
-            prev_spectrum_r: [0.0; BAR_COUNT],
-            bar_layout: Vec::with_capacity(BAR_COUNT),
+            prev_spectrum_l: [0.0; SAMPLE_COUNT],
+            prev_spectrum_r: [0.0; SAMPLE_COUNT],
             bg_pipeline,
             bg_bind_group,
-            bg_sampler,
-            bg_bind_group_layout,
-            lum_buffer,
+            uniforms_buffer,
             prev_lum: 0.,
         };
 
@@ -246,22 +202,8 @@ impl Visualizer {
     pub fn resize(&mut self, width: u32, height: u32) {
         self.renderer.resize(width, height);
 
-        let w = width as f32;
-        let gap = 12.0;
-
-        let target_width = w * 0.6;
-        let start_x = (w - target_width) / 2.0;
-        let bar_width = (target_width - (gap * (BAR_COUNT - 1) as f32)) / BAR_COUNT as f32;
-
-        self.bar_layout = (0..BAR_COUNT)
-            .map(|i| {
-                let x = start_x + i as f32 * (bar_width + gap);
-                BarLayoutItem { x, w: bar_width }
-            })
-            .collect();
-
-        self.prev_spectrum_l = [0.0; BAR_COUNT];
-        self.prev_spectrum_r = [0.0; BAR_COUNT];
+        self.prev_spectrum_l = [0.0; SAMPLE_COUNT];
+        self.prev_spectrum_r = [0.0; SAMPLE_COUNT];
     }
 
     pub fn render(&mut self, audio: &mut SpectrumAudioLoopback, time: f32) {
@@ -280,17 +222,34 @@ impl Visualizer {
             right.iter().copied().sum::<f32>() / right.len() as f32
         };
 
-        let target_lum = (1.0 - avg_left.max(avg_right) * 0.2).max(0.3);
+        let avg = avg_left.max(avg_right);
+        let target_lum = (1.0 - avg * 0.3).max(0.2);
 
         let alpha = 0.2;
 
         let lum_value = self.prev_lum + (target_lum - self.prev_lum) * alpha;
         self.prev_lum = lum_value;
+        let mut uniforms = Uniforms {
+            brightness: lum_value,
+            time,
+            pad: [0.0; 2],
+            spectrum: [[0.0; 4]; 16],
+        };
+
+        let count = left.len().min(right.len()).min(16);
+
+        for i in 0..count {
+            let l = left[i];
+            let r = right[i];
+            let mono = (l + r) * 0.5;
+
+            uniforms.spectrum[i] = [mono, mono, mono, mono];
+        }
 
         self.renderer.queue.write_buffer(
-            &self.lum_buffer,
+            &self.uniforms_buffer,
             0,
-            bytemuck::cast_slice(&[lum_value, 0.0, 0.0, 0.0]),
+            bytemuck::cast_slice(&[uniforms]),
         );
 
         let frame = self.renderer.begin_frame();
@@ -334,4 +293,16 @@ impl Visualizer {
 
         frame.present();
     }
+}
+
+use bytemuck::{Pod, Zeroable};
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+struct Uniforms {
+    pub brightness: f32,
+    pub time: f32,
+    pub pad: [f32; 2],
+
+    pub spectrum: [[f32; 4]; 16],
 }

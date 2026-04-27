@@ -13,3 +13,5 @@ pub use screen_bounds::ScreenBounds;
 
 #[cfg(target_family = "windows")]
 pub use windows::run;
+
+pub use samplers::SpectrumAudioLoopback;

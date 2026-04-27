@@ -8,6 +8,7 @@ name = "engine"
 path = "lib.rs"
 
 [dependencies]
+bytemuck.workspace = true
 smol.workspace = true
 raw-window-handle.workspace = true
 vello.workspace = true

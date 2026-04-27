@@ -83,7 +83,7 @@ impl WallpaperDriver {
             s.spawn_target(hinstance, target, &self.wgpu_instance);
         }
 
-        unsafe { event_loop::enter_loop() }
+        unsafe { event_loop::enter_loop(self) }
     }
 
     unsafe extern "system" fn run_thread(param: *mut c_void) -> u32 {

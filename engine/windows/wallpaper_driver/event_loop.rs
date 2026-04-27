@@ -9,12 +9,9 @@ use windows_sys::Win32::{
     UI::WindowsAndMessaging::*,
 };
 
-use crate::{
-    AudioLoopback,
-    windows::{
-        messages::WM_APP_TERMINATE,
-        wallpaper_driver::{WallpaperDriver, target::WallpaperTarget},
-    },
+use crate::windows::{
+    messages::WM_APP_TERMINATE,
+    wallpaper_driver::{WallpaperDriver, target::WallpaperTarget},
 };
 
 #[allow(unsafe_op_in_unsafe_fn)]
@@ -24,8 +21,6 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
     for screen in &mut driver.screens {
         screen.store_state();
     }
-
-    let mut audio = AudioLoopback::new();
 
     'outer: loop {
         while PeekMessageW(&mut msg, ptr::null_mut(), 0, 0, PM_REMOVE) != 0 {
@@ -37,11 +32,9 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
             DispatchMessageW(&msg);
         }
 
-        audio.poll();
-
         for screen in &mut driver.screens {
-            if let Some(target) = screen.target.as_mut() {
-                target.render_wave(audio.samples());
+            if let Some(_target) = screen.target.as_mut() {
+                // target.render_wave(audio.samples());
             }
         }
 

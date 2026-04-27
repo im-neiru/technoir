@@ -2,12 +2,12 @@
 mod windows;
 
 mod config;
-mod renderer;
+mod renderers;
 mod samplers;
 mod screen_bounds;
 
 pub use config::Config;
-pub use renderer::Renderer;
+pub use renderers::{Renderer, Renderer2d};
 pub use samplers::AudioLoopback;
 pub use screen_bounds::ScreenBounds;
 

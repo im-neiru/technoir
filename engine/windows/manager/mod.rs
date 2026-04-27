@@ -35,7 +35,7 @@ pub struct Manager {
     hwnd: NonNull<c_void>,
     hinstance: NonNull<c_void>,
     is_open: bool,
-    graphics: Option<crate::Renderer>,
+    renderer: Option<crate::Renderer2d>,
     ui: ui::ManagerUi,
 }
 
@@ -47,7 +47,7 @@ impl Manager {
             hwnd,
             hinstance,
             is_open: visible,
-            graphics: None,
+            renderer: None,
             ui: ui::ManagerUi::new(),
         }
     }
@@ -74,21 +74,21 @@ impl Manager {
             )
         };
 
-        let graphics = crate::Renderer::new(wgpu_instance, wgpu_surface, width, height).await;
+        let rendrer = crate::Renderer2d::new(wgpu_instance, wgpu_surface, width, height).await;
 
-        self.graphics = Some(graphics);
+        self.renderer = Some(rendrer);
     }
 
     pub(super) fn render(&mut self) {
-        if let Some(graphics) = &mut self.graphics {
+        if let Some(renderer) = &mut self.renderer {
             let (scene, base_color) = self.ui.render();
-            graphics.render_scene(scene, base_color);
+            renderer.render_scene(scene, base_color);
         }
     }
 
     pub(super) fn resize(&mut self, width: u32, height: u32) {
-        if let Some(graphics) = &mut self.graphics {
-            graphics.resize(width, height);
+        if let Some(renderer) = &mut self.renderer {
+            renderer.resize(width, height);
         }
     }
 }

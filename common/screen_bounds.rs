@@ -5,9 +5,3 @@ pub struct ScreenBounds {
     pub width: u32,
     pub height: u32,
 }
-
-#[derive(Debug, Clone, Copy)]
-pub struct ScreenSize {
-    pub width: u32,
-    pub height: u32,
-}

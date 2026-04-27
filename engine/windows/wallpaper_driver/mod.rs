@@ -11,6 +11,7 @@ use core::{
 use desktop_handles::DesktopHandles;
 
 pub use screen::Screen;
+use vello::wgpu;
 use windows_sys::Win32::{
     Foundation::CloseHandle,
     System::{
@@ -23,10 +24,11 @@ pub struct WallpaperDriver {
     screens: Vec<Screen>,
     desktop_handles: DesktopHandles,
     thread: Option<NonNull<c_void>>,
+    wgpu_instance: wgpu::Instance,
 }
 
 impl WallpaperDriver {
-    pub fn new() -> Self {
+    pub fn new(wgpu_instance: &wgpu::Instance) -> Self {
         let screens = Screen::get_screens();
         let desktop_handles = DesktopHandles::find();
 
@@ -34,6 +36,7 @@ impl WallpaperDriver {
             screens,
             desktop_handles,
             thread: None,
+            wgpu_instance: wgpu_instance.clone(),
         }
     }
 
@@ -77,7 +80,7 @@ impl WallpaperDriver {
         let target = self.desktop_handles.get_target_parent();
 
         for s in self.screens.iter_mut() {
-            s.spawn_target(hinstance, target);
+            s.spawn_target(hinstance, target, &self.wgpu_instance);
         }
 
         unsafe { event_loop::enter_loop() }

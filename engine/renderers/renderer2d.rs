@@ -8,7 +8,7 @@ pub struct Renderer2d {
     pub(super) renderer: Renderer,
     vello: VelloRenderer,
     target_texture: wgpu::Texture,
-    target_view: wgpu::TextureView,
+    pub(super) target_view: wgpu::TextureView,
     format: wgpu::TextureFormat,
 }
 
@@ -118,7 +118,9 @@ impl Renderer2d {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format,
-            usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
+            usage: wgpu::TextureUsages::STORAGE_BINDING
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: &[],
         });
 

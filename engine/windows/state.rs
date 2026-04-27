@@ -33,7 +33,7 @@ impl State {
 
         let manager = Manager::new(hinstance, config.open_manager);
 
-        let driver = WallpaperDriver::new();
+        let driver = WallpaperDriver::new(&wgpu_instance);
 
         Self {
             hinstance,

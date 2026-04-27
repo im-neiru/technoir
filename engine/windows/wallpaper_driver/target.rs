@@ -1,28 +1,34 @@
 use core::{
     ffi::c_void,
+    mem,
     ptr::{self, NonNull},
 };
 
+use raw_window_handle::{
+    RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle,
+};
+use vello::wgpu;
 use windows_sys::Win32::{
     Foundation::{ERROR_CLASS_ALREADY_EXISTS, GetLastError},
     UI::WindowsAndMessaging::*,
 };
 
-use crate::ScreenBounds;
+use crate::{Renderer, ScreenBounds};
 
-#[derive(Debug)]
 pub struct WallpaperTarget {
     pub(super) hwnd: NonNull<c_void>,
     hinstance: NonNull<c_void>,
     classname: [u16; 96],
+    renderer: Renderer,
 }
 
 impl WallpaperTarget {
-    pub(super) fn new(
+    pub(super) async fn new(
         screen_name: &str,
         bounds: &ScreenBounds,
         hinstance: NonNull<c_void>,
         parent: NonNull<c_void>,
+        wgpu_instance: &wgpu::Instance,
     ) -> Self {
         unsafe {
             let classname = Self::build_classname(screen_name);
@@ -79,10 +85,31 @@ impl WallpaperTarget {
                 SWP_SHOWWINDOW | SWP_NOACTIVATE,
             );
 
+            let wgpu_surface = wgpu_instance
+                .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
+                    raw_display_handle: RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
+
+                    raw_window_handle: RawWindowHandle::Win32(Win32WindowHandle::new(
+                        hwnd.addr().cast_signed(),
+                    )),
+                })
+                .expect("Failed to create wgpu::Surface");
+
+            let (width, height) = {
+                let mut rect = mem::zeroed();
+
+                GetClientRect(hwnd.as_ptr() as _, &mut rect);
+                (
+                    (rect.right - rect.left).max(1) as u32,
+                    (rect.bottom - rect.top).max(1) as u32,
+                )
+            };
+
             Self {
                 hwnd,
                 hinstance,
                 classname,
+                renderer: Renderer::new(wgpu_instance, wgpu_surface, width, height).await,
             }
         }
     }

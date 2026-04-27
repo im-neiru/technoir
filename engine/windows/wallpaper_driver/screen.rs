@@ -4,6 +4,7 @@ use core::{
     ptr::{self, NonNull},
 };
 
+use vello::wgpu;
 use windows_sys::{
     Win32::{
         Devices::Display::*,
@@ -18,7 +19,6 @@ use crate::{screen_bounds::ScreenBounds, windows::messages::WM_APP_TERMINATE};
 
 use super::target::WallpaperTarget;
 
-#[derive(Debug)]
 pub struct Screen {
     _hmonitor: HMONITOR,
     name: String,
@@ -168,13 +168,18 @@ impl Screen {
         TRUE
     }
 
-    pub fn spawn_target(&mut self, hinstance: NonNull<c_void>, parent: NonNull<c_void>) {
-        self.target = Some(WallpaperTarget::new(
-            &self.name,
-            &self.bounds,
-            hinstance,
-            parent,
-        ));
+    pub fn spawn_target(
+        &mut self,
+        hinstance: NonNull<c_void>,
+        parent: NonNull<c_void>,
+        wgpu_instance: &wgpu::Instance,
+    ) {
+        smol::block_on(async {
+            self.target = Some(
+                WallpaperTarget::new(&self.name, &self.bounds, hinstance, parent, wgpu_instance)
+                    .await,
+            );
+        });
     }
 
     #[inline]

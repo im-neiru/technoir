@@ -1,14 +1,19 @@
 use core::{
     ffi::c_void,
     mem,
-    num::NonZero,
     ptr::{self, NonNull},
 };
 
 use windows_sys::{
-    Win32::UI::{
-        Shell::{NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NOTIFYICONDATAW, Shell_NotifyIconW},
-        WindowsAndMessaging::*,
+    Win32::{
+        Foundation::{ERROR_CLASS_ALREADY_EXISTS, GetLastError},
+        UI::{
+            Shell::{
+                NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NOTIFYICONDATAW,
+                Shell_NotifyIconW,
+            },
+            WindowsAndMessaging::*,
+        },
     },
     core::PCWSTR,
     w,
@@ -23,6 +28,7 @@ use vello::wgpu;
 
 pub struct Manager {
     hwnd: NonNull<c_void>,
+    hinstance: NonNull<c_void>,
     is_open: bool,
     graphics: engine::Renderer,
     ui: ui::ManagerUi,
@@ -60,6 +66,7 @@ impl Manager {
 
         Self {
             hwnd,
+            hinstance,
             is_open: visible,
             graphics,
             ui: ui::ManagerUi::new(),
@@ -103,7 +110,12 @@ impl Manager {
             }
         };
 
-        unsafe { NonZero::new(RegisterClassW(&wc)) }.expect("Failed to register window class");
+        if unsafe { RegisterClassW(&wc) } == 0 {
+            let err = unsafe { GetLastError() };
+            if err != ERROR_CLASS_ALREADY_EXISTS {
+                panic!("Failed to register window class: {}", err);
+            }
+        }
 
         NonNull::new(unsafe {
             let mut style = WS_OVERLAPPEDWINDOW;
@@ -218,7 +230,14 @@ impl Manager {
 impl Drop for Manager {
     fn drop(&mut self) {
         unsafe {
+            let mut nid: NOTIFYICONDATAW = mem::zeroed();
+            nid.cbSize = mem::size_of::<NOTIFYICONDATAW>() as u32;
+            nid.hWnd = self.hwnd.as_ptr();
+            nid.uID = 1;
+            Shell_NotifyIconW(NIM_DELETE, &nid);
+
             DestroyWindow(self.hwnd.as_ptr());
+            UnregisterClassW(Self::SANDBOX_WIN_NAME, self.hinstance.as_ptr());
         }
     }
 }

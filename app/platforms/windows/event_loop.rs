@@ -3,7 +3,7 @@ use core::{
     ptr::{self, NonNull},
 };
 
-use windows_sys::Win32::{Foundation::*, Graphics::Gdi::ValidateRect, UI::WindowsAndMessaging::*};
+use windows_sys::Win32::{Foundation::*, Graphics::Gdi::*, UI::WindowsAndMessaging::*};
 
 use super::state::State;
 
@@ -45,9 +45,11 @@ pub(super) unsafe extern "system" fn window_proc(
                     WM_RBUTTONUP => state.manager.show_tray_menu(),
                     _ => {}
                 }
-            }
 
-            0
+                0
+            } else {
+                DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
         }
         WM_APP_TERMINATE => {
             PostQuitMessage(0);
@@ -73,6 +75,20 @@ pub(super) unsafe extern "system" fn window_proc(
                 unsafe {
                     ValidateRect(hwnd, ptr::null());
                 }
+            } else {
+                unsafe {
+                    let mut ps: PAINTSTRUCT = mem::zeroed();
+                    let hdc = BeginPaint(hwnd, &mut ps);
+
+                    let mut rect = mem::zeroed();
+                    GetClientRect(hwnd, &mut rect);
+
+                    let brush = CreateSolidBrush(0x0f0f0f);
+                    FillRect(hdc, &rect, brush);
+                    DeleteObject(brush);
+
+                    EndPaint(hwnd, &ps);
+                }
             }
 
             0
@@ -84,12 +100,16 @@ pub(super) unsafe extern "system" fn window_proc(
                 let height = (lparam >> 16) as u32;
 
                 state.manager.resize(width, height);
-            }
 
-            0
+                0
+            } else {
+                DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
         }
         WM_DESTROY => {
-            PostQuitMessage(0);
+            if state.is_some() {
+                PostQuitMessage(0);
+            }
 
             0
         }

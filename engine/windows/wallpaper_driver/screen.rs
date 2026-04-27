@@ -23,7 +23,7 @@ pub struct Screen {
     _hmonitor: HMONITOR,
     name: String,
     bounds: ScreenBounds,
-    target: Option<WallpaperTarget>,
+    pub(super) target: Option<WallpaperTarget>,
 }
 
 impl Screen {

@@ -6,11 +6,12 @@ use windows_sys::{
     w,
 };
 
+#[allow(unused)]
 pub struct DesktopHandles {
-    pub progman: NonNull<c_void>,
-    pub shelldll_defview: Option<NonNull<c_void>>,
-    pub icons_hwnd: Option<NonNull<c_void>>,
-    pub worker_w: Option<NonNull<c_void>>,
+    progman: NonNull<c_void>,
+    shelldll_defview: Option<NonNull<c_void>>,
+    icons_hwnd: Option<NonNull<c_void>>,
+    worker_w: Option<NonNull<c_void>>,
 }
 
 impl DesktopHandles {
@@ -83,5 +84,10 @@ impl DesktopHandles {
                 InvalidateRect(worker_w.as_ptr(), ptr::null_mut(), 1);
             }
         }
+    }
+
+    #[inline]
+    pub fn get_target_parent(&self) -> NonNull<c_void> {
+        self.worker_w.unwrap_or(self.progman)
     }
 }

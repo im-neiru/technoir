@@ -3,11 +3,13 @@ use core::{
     ptr::{self, NonNull},
 };
 
+use crate::platforms::windows::{
+    messages::{WM_APP_TERMINATE, WM_USER_TRAY},
+    state::State,
+};
 use windows_sys::Win32::{Foundation::*, Graphics::Gdi::*, UI::WindowsAndMessaging::*};
 
-use super::state::State;
-
-pub(super) fn enter_loop(mut state: State) {
+pub(crate) fn enter_loop(mut state: State) {
     unsafe {
         let state_ptr = NonNull::new_unchecked((&mut state) as *mut State);
         state_ptr.as_ref().manager.store_state(state_ptr);
@@ -22,9 +24,6 @@ pub(super) fn enter_loop(mut state: State) {
         }
     }
 }
-
-pub(super) const WM_APP_TERMINATE: u32 = WM_APP + 1;
-pub(super) const WM_USER_TRAY: u32 = WM_USER + 1;
 
 #[allow(unsafe_op_in_unsafe_fn)]
 pub(super) unsafe extern "system" fn window_proc(
@@ -53,6 +52,13 @@ pub(super) unsafe extern "system" fn window_proc(
         }
         WM_APP_TERMINATE => {
             PostQuitMessage(0);
+
+            if let Some(mut state_ptr) = state {
+                let state = state_ptr.as_mut();
+
+                state.driver.terminate();
+            }
+
             0
         }
         WM_CLOSE => {
@@ -74,20 +80,6 @@ pub(super) unsafe extern "system" fn window_proc(
 
                 unsafe {
                     ValidateRect(hwnd, ptr::null());
-                }
-            } else {
-                unsafe {
-                    let mut ps: PAINTSTRUCT = mem::zeroed();
-                    let hdc = BeginPaint(hwnd, &mut ps);
-
-                    let mut rect = mem::zeroed();
-                    GetClientRect(hwnd, &mut rect);
-
-                    let brush = CreateSolidBrush(0x0f0f0f);
-                    FillRect(hdc, &rect, brush);
-                    DeleteObject(brush);
-
-                    EndPaint(hwnd, &ps);
                 }
             }
 

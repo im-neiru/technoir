@@ -1,11 +1,10 @@
-mod desktop_handles;
-mod event_loop;
 mod manager;
-mod screen;
+mod messages;
 mod state;
+mod wallpaper_driver;
 
 pub(crate) async fn run(config: &crate::config::Config) {
     let state = state::State::new(config).await;
 
-    state.enter_loop();
+    state.enter_ui();
 }

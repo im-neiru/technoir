@@ -1,3 +1,5 @@
+mod event_loop;
+
 use core::{
     ffi::c_void,
     mem,
@@ -23,8 +25,11 @@ use raw_window_handle::{
     RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle,
 };
 
-use super::event_loop::{WM_APP_TERMINATE, WM_USER_TRAY};
+use super::messages::{WM_APP_TERMINATE, WM_USER_TRAY};
+
 use vello::wgpu;
+
+pub(crate) use event_loop::enter_loop;
 
 pub struct Manager {
     hwnd: NonNull<c_void>,
@@ -101,7 +106,7 @@ impl Manager {
 
             WNDCLASSW {
                 style: CS_HREDRAW | CS_VREDRAW,
-                lpfnWndProc: Some(super::event_loop::window_proc),
+                lpfnWndProc: Some(event_loop::window_proc),
                 hInstance: hinstance.as_ptr(),
                 lpszClassName: Self::SANDBOX_WIN_NAME,
                 hCursor: cursor,

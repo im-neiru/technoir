@@ -5,12 +5,16 @@ use core::{
 
 use windows_sys::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, WPARAM},
+    System::Threading::Sleep,
     UI::WindowsAndMessaging::*,
 };
 
-use crate::windows::{
-    messages::WM_APP_TERMINATE,
-    wallpaper_driver::{WallpaperDriver, target::WallpaperTarget},
+use crate::{
+    AudioLoopback,
+    windows::{
+        messages::WM_APP_TERMINATE,
+        wallpaper_driver::{WallpaperDriver, target::WallpaperTarget},
+    },
 };
 
 #[allow(unsafe_op_in_unsafe_fn)]
@@ -21,7 +25,7 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
         screen.store_state();
     }
 
-    let time = std::time::Instant::now();
+    let mut audio = AudioLoopback::new();
 
     'outer: loop {
         while PeekMessageW(&mut msg, ptr::null_mut(), 0, 0, PM_REMOVE) != 0 {
@@ -33,14 +37,15 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
             DispatchMessageW(&msg);
         }
 
+        audio.poll();
+
         for screen in &mut driver.screens {
             if let Some(target) = screen.target.as_mut() {
-                let elapsed = time.elapsed().as_secs_f32();
-                target.render(elapsed);
+                target.render_wave(audio.samples());
             }
         }
 
-        std::thread::sleep(std::time::Duration::from_millis(16));
+        Sleep(1);
     }
 }
 

@@ -3,6 +3,7 @@ use core::{
     mem,
     ptr::{self, NonNull},
 };
+use std::collections::VecDeque;
 
 use raw_window_handle::{
     RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle,
@@ -119,26 +120,69 @@ impl WallpaperTarget {
         self.renderer.resize(width, height);
     }
 
-    pub(crate) fn render(&mut self, elapsed: f32) {
-        use vello::{Scene, kurbo::Circle, peniko::*};
-        let mut scene = Scene::new();
-        let base_color = Color::BLACK;
+    pub fn render_wave(&mut self, samples: &[f32]) {
+        use vello::kurbo::{Affine, BezPath, Stroke};
+        use vello::peniko::Color;
 
-        let radius = 50.0;
-        let cx = 200.0 + 100.0 * (elapsed * 2.0).sin();
-        let cy = 200.0 + 100.0 * (elapsed * 2.0).cos();
-        let circle = Circle::new((cx, cy), radius);
+        let mut scene = vello::Scene::new();
+        let width = self.renderer.width() as f64;
+        let height = self.renderer.height() as f64;
+        let mid_y = height / 2.0;
+
+        let mut path = BezPath::new();
+        let x_step = width / (samples.len() as f64);
+
+        for (i, &sample) in samples.iter().enumerate() {
+            let x = i as f64 * x_step;
+
+            let y = mid_y + (sample as f64 * height * 0.4);
+
+            if i == 0 {
+                path.move_to((x, y));
+            } else {
+                path.line_to((x, y));
+            }
+        }
 
         scene.fill(
-            Fill::NonZero,
-            vello::kurbo::Affine::IDENTITY,
-            Color::from_rgb8(255, 0, 0),
+            vello::peniko::Fill::NonZero,
+            Affine::IDENTITY,
+            Color::BLACK,
             None,
-            &circle,
+            &vello::kurbo::Rect::new(0.0, 0.0, width, height),
         );
 
-        self.renderer.render_scene(&scene, base_color);
+        scene.stroke(
+            &Stroke::new(3.0),
+            Affine::IDENTITY,
+            Color::from_rgb8(0, 255, 200), // Cyan-ish
+            None,
+            &path,
+        );
+
+        self.renderer.render_scene(&scene, Color::BLACK);
     }
+
+    // pub(crate) fn render(&mut self, elapsed: f32) {
+    //     use vello::{Scene, kurbo::Circle, peniko::*};
+    //     let mut scene = Scene::new();
+    //     let base_color = Color::BLACK;
+
+    //     let radius = 50.0;
+    //     let cx = 200.0 + 100.0 * (elapsed * 2.0).sin();
+    //     let cy = 200.0 + 100.0 * (elapsed * 2.0).cos();
+    //     let circle = Circle::new((cx, cy), radius);
+
+    //     scene.fill(
+    //         Fill::NonZero,
+    //         vello::kurbo::Affine::IDENTITY,
+    //         Color::from_rgb8(255, 0, 0),
+    //         None,
+    //         &circle,
+    //     );
+
+    //     self.renderer.render_scene(&scene, base_color);
+    // }
 
     fn build_classname(screen_name: &str) -> [u16; 96] {
         let base = "TechNoirTarget ";

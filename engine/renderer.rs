@@ -165,4 +165,14 @@ impl Renderer {
         self.target_texture = texture;
         self.target_view = view;
     }
+
+    #[inline]
+    pub fn width(&self) -> u32 {
+        self.config.width
+    }
+
+    #[inline]
+    pub fn height(&self) -> u32 {
+        self.config.height
+    }
 }

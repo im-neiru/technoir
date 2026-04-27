@@ -22,6 +22,9 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
         screen.store_state();
     }
 
+    let ref_time = std::time::Instant::now();
+    let mut fft = crate::SpectrumAudioLoopback::new();
+
     'outer: loop {
         while PeekMessageW(&mut msg, ptr::null_mut(), 0, 0, PM_REMOVE) != 0 {
             if msg.message == WM_QUIT {
@@ -32,13 +35,16 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
             DispatchMessageW(&msg);
         }
 
+        fft.poll();
+        let elapsed = ref_time.elapsed().as_secs_f32();
+
         for screen in &mut driver.screens {
-            if let Some(_target) = screen.target.as_mut() {
-                // target.render_wave(audio.samples());
+            if let Some(target) = screen.target.as_mut() {
+                target.visualizer.render(&mut fft, elapsed);
             }
         }
 
-        Sleep(1);
+        Sleep(24);
     }
 }
 

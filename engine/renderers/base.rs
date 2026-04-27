@@ -1,4 +1,4 @@
-use vello::{Scene, wgpu};
+use vello::wgpu;
 
 pub struct Renderer {
     pub device: wgpu::Device,
@@ -52,6 +52,7 @@ impl Renderer {
             .copied()
             .find(|f| *f == wgpu::TextureFormat::Rgba8Unorm)
             .unwrap_or(caps.formats[0]);
+
         let config = wgpu::SurfaceConfiguration {
             usage,
             format,

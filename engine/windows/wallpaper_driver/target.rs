@@ -20,7 +20,8 @@ pub struct WallpaperTarget {
     pub(super) hwnd: NonNull<c_void>,
     hinstance: NonNull<c_void>,
     classname: [u16; 96],
-    renderer: Renderer,
+
+    pub(super) visualizer: crate::Visualizer,
 }
 
 impl WallpaperTarget {
@@ -110,14 +111,15 @@ impl WallpaperTarget {
                 hwnd,
                 hinstance,
                 classname,
-                renderer: Renderer::new(wgpu_instance, wgpu_surface, width, height).await,
+                visualizer: crate::Visualizer::new(wgpu_instance, wgpu_surface, width, height)
+                    .await,
             }
         }
     }
 
     #[inline]
     pub(crate) fn resize(&mut self, width: u32, height: u32) {
-        self.renderer.resize(width, height);
+        self.visualizer.resize(width, height);
     }
 
     fn build_classname(screen_name: &str) -> [u16; 96] {

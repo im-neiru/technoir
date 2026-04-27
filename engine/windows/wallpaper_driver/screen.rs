@@ -10,7 +10,7 @@ use windows_sys::{
         Devices::Display::*,
         Foundation::{RECT, TRUE},
         Graphics::Gdi::*,
-        UI::WindowsAndMessaging::PostMessageW,
+        UI::WindowsAndMessaging::{GWL_USERDATA, PostMessageW, SetWindowLongPtrA},
     },
     core::BOOL,
 };
@@ -55,6 +55,18 @@ impl Screen {
         }
 
         screens
+    }
+
+    pub(super) fn store_state(&mut self) {
+        unsafe {
+            if let Some(target) = &self.target {
+                SetWindowLongPtrA(
+                    target.hwnd.as_ptr(),
+                    GWL_USERDATA,
+                    NonNull::from(target).addr().cast_signed().get(),
+                );
+            }
+        };
     }
 
     fn get_friendly_name(device_name: &[u16; 32]) -> Option<String> {

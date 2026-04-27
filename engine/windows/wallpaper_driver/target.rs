@@ -114,6 +114,32 @@ impl WallpaperTarget {
         }
     }
 
+    #[inline]
+    pub(crate) fn resize(&mut self, width: u32, height: u32) {
+        self.renderer.resize(width, height);
+    }
+
+    pub(crate) fn render(&mut self, elapsed: f32) {
+        use vello::{Scene, kurbo::Circle, peniko::*};
+        let mut scene = Scene::new();
+        let base_color = Color::BLACK;
+
+        let radius = 50.0;
+        let cx = 200.0 + 100.0 * (elapsed * 2.0).sin();
+        let cy = 200.0 + 100.0 * (elapsed * 2.0).cos();
+        let circle = Circle::new((cx, cy), radius);
+
+        scene.fill(
+            Fill::NonZero,
+            vello::kurbo::Affine::IDENTITY,
+            Color::from_rgb8(255, 0, 0),
+            None,
+            &circle,
+        );
+
+        self.renderer.render_scene(&scene, base_color);
+    }
+
     fn build_classname(screen_name: &str) -> [u16; 96] {
         let base = "TechNoirTarget ";
 

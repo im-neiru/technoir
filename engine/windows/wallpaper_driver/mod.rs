@@ -44,9 +44,7 @@ impl WallpaperDriver {
                     s.send_terminate();
                 }
 
-                println!("Terminate");
                 WaitForSingleObject(thread.as_ptr(), INFINITE);
-                println!("Waited");
             }
 
             self.thread = None;

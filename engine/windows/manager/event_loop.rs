@@ -3,7 +3,7 @@ use core::{
     ptr::{self, NonNull},
 };
 
-use crate::platforms::windows::{
+use crate::windows::{
     messages::{WM_APP_TERMINATE, WM_USER_TRAY},
     state::State,
 };

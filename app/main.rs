@@ -1,10 +1,9 @@
-mod config;
-mod platforms;
+use engine::{Config, run};
 
 fn main() {
-    let config = config::Config::load();
+    let config = Config::load();
 
     smol::block_on(async {
-        platforms::run(&config).await;
+        run(&config).await;
     });
 }

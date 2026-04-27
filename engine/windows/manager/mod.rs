@@ -35,7 +35,7 @@ pub struct Manager {
     hwnd: NonNull<c_void>,
     hinstance: NonNull<c_void>,
     is_open: bool,
-    graphics: engine::Renderer,
+    graphics: crate::Renderer,
     ui: ui::ManagerUi,
 }
 
@@ -67,7 +67,7 @@ impl Manager {
             )
         };
 
-        let graphics = engine::Renderer::new(wgpu_instance, wgpu_surface, width, height).await;
+        let graphics = crate::Renderer::new(wgpu_instance, wgpu_surface, width, height).await;
 
         Self {
             hwnd,

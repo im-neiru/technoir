@@ -13,9 +13,7 @@ raw-window-handle.workspace = true
 vello.workspace = true
 
 
-common.path = "../common"
 engine.path = "../engine"
-ui.path = "../ui"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys.workspace = true

@@ -6,7 +6,7 @@ use windows_sys::Win32::{
     UI::WindowsAndMessaging::*,
 };
 
-use crate::platforms::windows::messages::WM_APP_TERMINATE;
+use crate::windows::messages::WM_APP_TERMINATE;
 
 #[allow(unsafe_op_in_unsafe_fn)]
 pub(super) unsafe fn enter_loop() {
@@ -33,15 +33,12 @@ pub(super) unsafe extern "system" fn window_proc(
 ) -> LRESULT {
     match msg {
         WM_APP_TERMINATE => {
-            println!("GOING TO TERMINATE");
-
             DestroyWindow(hwnd);
             0
         }
         WM_CLOSE => 0,
         WM_PAINT => {
             unsafe {
-                println!("Render");
                 let mut ps: PAINTSTRUCT = mem::zeroed();
                 let hdc = BeginPaint(hwnd, &mut ps);
 

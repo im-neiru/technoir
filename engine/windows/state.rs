@@ -17,7 +17,7 @@ pub struct State {
 }
 
 impl State {
-    pub(super) async fn new(config: &crate::config::Config) -> Self {
+    pub(super) fn new(config: &crate::config::Config) -> Self {
         let hinstance = unsafe { NonNull::new(GetModuleHandleW(ptr::null_mut())) }
             .expect("Failed to retrieve module handle");
 
@@ -31,7 +31,7 @@ impl State {
             backend_options: wgpu::BackendOptions::default(),
         });
 
-        let manager = Manager::new(hinstance, config.open_manager, &wgpu_instance).await;
+        let manager = Manager::new(hinstance, config.open_manager);
 
         let driver = WallpaperDriver::new();
 
@@ -43,8 +43,9 @@ impl State {
         }
     }
 
-    pub(super) fn enter_ui(mut self) {
+    pub(super) async fn enter_ui(mut self) {
         self.driver.run();
+        self.manager.init_graphics(&self.wgpu_instance).await;
         super::manager::enter_loop(self);
     }
 }

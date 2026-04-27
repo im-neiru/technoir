@@ -35,24 +35,31 @@ pub struct Manager {
     hwnd: NonNull<c_void>,
     hinstance: NonNull<c_void>,
     is_open: bool,
-    graphics: crate::Renderer,
+    graphics: Option<crate::Renderer>,
     ui: ui::ManagerUi,
 }
 
 impl Manager {
-    pub(super) async fn new(
-        hinstance: NonNull<c_void>,
-        visible: bool,
-        wgpu_instance: &wgpu::Instance,
-    ) -> Self {
+    pub(super) fn new(hinstance: NonNull<c_void>, visible: bool) -> Self {
         let hwnd = unsafe { Self::new_manager_win(hinstance, visible) };
+
+        Self {
+            hwnd,
+            hinstance,
+            is_open: visible,
+            graphics: None,
+            ui: ui::ManagerUi::new(),
+        }
+    }
+
+    pub(super) async fn init_graphics(&mut self, wgpu_instance: &wgpu::Instance) {
         let wgpu_surface = unsafe {
             wgpu_instance
                 .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
                     raw_display_handle: RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
 
                     raw_window_handle: RawWindowHandle::Win32(Win32WindowHandle::new(
-                        hwnd.addr().cast_signed(),
+                        self.hwnd.addr().cast_signed(),
                     )),
                 })
                 .expect("Failed to create wgpu::Surface")
@@ -60,7 +67,7 @@ impl Manager {
 
         let (width, height) = {
             let mut rect = unsafe { mem::zeroed() };
-            unsafe { GetClientRect(hwnd.as_ptr() as _, &mut rect) };
+            unsafe { GetClientRect(self.hwnd.as_ptr() as _, &mut rect) };
             (
                 (rect.right - rect.left).max(1) as u32,
                 (rect.bottom - rect.top).max(1) as u32,
@@ -69,22 +76,20 @@ impl Manager {
 
         let graphics = crate::Renderer::new(wgpu_instance, wgpu_surface, width, height).await;
 
-        Self {
-            hwnd,
-            hinstance,
-            is_open: visible,
-            graphics,
-            ui: ui::ManagerUi::new(),
-        }
+        self.graphics = Some(graphics);
     }
 
     pub(super) fn render(&mut self) {
-        let (scene, base_color) = self.ui.render();
-        self.graphics.render_scene(scene, base_color);
+        if let Some(graphics) = &mut self.graphics {
+            let (scene, base_color) = self.ui.render();
+            graphics.render_scene(scene, base_color);
+        }
     }
 
     pub(super) fn resize(&mut self, width: u32, height: u32) {
-        self.graphics.resize(width, height);
+        if let Some(graphics) = &mut self.graphics {
+            graphics.resize(width, height);
+        }
     }
 }
 

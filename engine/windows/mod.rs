@@ -4,7 +4,7 @@ mod state;
 mod wallpaper_driver;
 
 pub async fn run(config: &crate::config::Config) {
-    let state = state::State::new(config).await;
+    let state = state::State::new(config);
 
-    state.enter_ui();
+    state.enter_ui().await;
 }

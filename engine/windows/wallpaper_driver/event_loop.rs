@@ -19,7 +19,7 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
     let mut msg = mem::zeroed();
 
     for screen in &mut driver.screens {
-        screen.store_state();
+        screen.init();
     }
 
     let ref_time = std::time::Instant::now();
@@ -44,7 +44,7 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
             }
         }
 
-        Sleep(24);
+        Sleep(14);
     }
 }
 

@@ -10,7 +10,9 @@ use windows_sys::{
         Devices::Display::*,
         Foundation::{RECT, TRUE},
         Graphics::Gdi::*,
-        UI::WindowsAndMessaging::{GWL_USERDATA, PostMessageW, SetWindowLongPtrA},
+        UI::WindowsAndMessaging::{
+            GWL_USERDATA, PostMessageW, SW_SHOW, SetWindowLongPtrA, ShowWindow,
+        },
     },
     core::BOOL,
 };
@@ -55,9 +57,10 @@ impl Screen {
         }
 
         screens.into_iter().take(1).collect()
+        // screens
     }
 
-    pub(super) fn store_state(&mut self) {
+    pub(super) fn init(&mut self) {
         unsafe {
             if let Some(target) = &self.target {
                 SetWindowLongPtrA(
@@ -65,6 +68,8 @@ impl Screen {
                     GWL_USERDATA,
                     NonNull::from(target).addr().cast_signed().get(),
                 );
+
+                ShowWindow(target.hwnd.as_ptr(), SW_SHOW);
             }
         };
     }

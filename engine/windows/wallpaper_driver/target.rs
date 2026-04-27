@@ -59,7 +59,7 @@ impl WallpaperTarget {
                 WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
                 classname.as_ptr(),
                 classname.as_ptr(),
-                WS_POPUP | WS_VISIBLE,
+                WS_POPUP,
                 0,
                 0,
                 100,
@@ -106,6 +106,8 @@ impl WallpaperTarget {
                     (rect.bottom - rect.top).max(1) as u32,
                 )
             };
+
+            ShowWindow(hwnd.as_ptr(), SW_HIDE);
 
             Self {
                 hwnd,

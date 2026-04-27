@@ -11,8 +11,10 @@ pub struct Visualizer {
 
     prev_lum: f32,
     uniforms_buffer: wgpu::Buffer,
-    bg_pipeline: wgpu::RenderPipeline,
-    bg_bind_group: Option<wgpu::BindGroup>,
+    pipeline: wgpu::RenderPipeline,
+    bind_group: Option<wgpu::BindGroup>,
+    noise_texture: wgpu::Texture,
+    noise_sampler: wgpu::Sampler,
 }
 
 const SAMPLE_COUNT: usize = 64;
@@ -70,6 +72,22 @@ impl Visualizer {
                     wgpu::BindGroupLayoutEntry {
                         binding: 2,
                         visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
@@ -121,7 +139,18 @@ impl Visualizer {
 
         let bg_texture = Self::load_bg_texture("./sample/image.jpg", device, &renderer.queue);
 
-        let bg_bind_group = bg_texture.as_ref().map(|tex| {
+        let noise_texture = Self::load_noise_texture(device, &renderer.queue).unwrap();
+
+        let noise_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("Noise Sampler"),
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::Repeat,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+
+        let bind_group = bg_texture.as_ref().map(|tex| {
             let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("BG Bind Group"),
@@ -137,6 +166,16 @@ impl Visualizer {
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
+                        resource: wgpu::BindingResource::TextureView(
+                            &noise_texture.create_view(&Default::default()),
+                        ),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wgpu::BindingResource::Sampler(&noise_sampler),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
                         resource: uniforms_buffer.as_entire_binding(),
                     },
                 ],
@@ -147,10 +186,12 @@ impl Visualizer {
             renderer,
             prev_spectrum_l: [0.0; SAMPLE_COUNT],
             prev_spectrum_r: [0.0; SAMPLE_COUNT],
-            bg_pipeline,
-            bg_bind_group,
+            pipeline: bg_pipeline,
+            bind_group,
             uniforms_buffer,
             prev_lum: 0.,
+            noise_texture,
+            noise_sampler,
         };
 
         result.resize(width, height);
@@ -192,6 +233,54 @@ impl Visualizer {
             wgpu::Extent3d {
                 width,
                 height,
+                depth_or_array_layers: 1,
+            },
+        );
+
+        Some(texture)
+    }
+
+    fn load_noise_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> Option<wgpu::Texture> {
+        let width = 1024;
+        let height = 1024;
+        let mut data = vec![0u8; width * height * 4];
+
+        for y in 0..height {
+            for x in 0..width {
+                let i = (y * width + x) * 4;
+                data[i] = rand::random();
+                data[i + 1] = rand::random();
+                data[i + 2] = rand::random();
+                data[i + 3] = rand::random();
+            }
+        }
+
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Noise Texture"),
+            size: wgpu::Extent3d {
+                width: width as u32,
+                height: height as u32,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+
+        queue.write_texture(
+            texture.as_image_copy(),
+            &data,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * width as u32),
+                rows_per_image: Some(height as u32),
+            },
+            wgpu::Extent3d {
+                width: width as u32,
+                height: height as u32,
                 depth_or_array_layers: 1,
             },
         );
@@ -282,8 +371,8 @@ impl Visualizer {
                 multiview_mask: None,
             });
 
-            if let Some(bind_group) = &self.bg_bind_group {
-                rp.set_pipeline(&self.bg_pipeline);
+            if let Some(bind_group) = &self.bind_group {
+                rp.set_pipeline(&self.pipeline);
                 rp.set_bind_group(0, bind_group, &[]);
                 rp.draw(0..3, 0..1);
             }

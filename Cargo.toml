@@ -20,3 +20,4 @@ windows-sys = { version = "0.61.2", features = [
 wasapi = "0.23.0"
 rustfft = "6.4.1"
 image = "0.25.10"
+rand = "0.10.1"

@@ -14,7 +14,9 @@ struct Globals {
 
 @group(0) @binding(0) var t_diffuse: texture_2d<f32>;
 @group(0) @binding(1) var s_diffuse: sampler;
-@group(0) @binding(2) var<uniform> globals: Globals;
+@group(0) @binding(2) var t_noise: texture_2d<f32>;
+@group(0) @binding(3) var s_noise: sampler;
+@group(0) @binding(4) var<uniform> globals: Globals;
 
 const PI: f32 = 3.1415926;
 const ROTATION_OFFSET: f32 = 1.570795;
@@ -103,6 +105,9 @@ fn vs_main(@builtin(vertex_index) i: u32) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    let noise_uv = in.tex_coords * vec2<f32>(1.0, 1.0);
+    let n = textureSample(t_noise, s_noise, noise_uv + vec2<f32>(0.0, globals.time * 0.02)).r;
+
     let tex = textureSample(t_diffuse, s_diffuse, in.tex_coords);
     let bg = vec4<f32>(tex.rgb * globals.brightness, tex.a);
 
@@ -120,8 +125,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let amp = spectrum_circle(t);
 
-    let base_radius = 0.45;
-    let wave = base_radius + amp * 0.006;
+    let base_radius = max(0.48 - globals.brightness * 0.18, 0.24);
+    let wave = base_radius + amp * 0.004;
 
     let dist = abs(r - wave);
 
@@ -130,16 +135,20 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let energy = clamp(core + glow * 0.5, 0.0, 1.0);
 
-    let hue_shift = globals.time + amp * 0.00002;
+    let grain_strength = 0.8;
+    let grain = (n - 0.5) * grain_strength * energy;
+    let energy_noisy = clamp(energy + grain, 0.0, 1.0);
+
+    let hue_shift = globals.time * 0.6 + amp * 0.002;
     let hue = fract(t + hue_shift);
 
     let saturation = 0.9;
 
-    let value = energy + amp * 0.6;
+    let value = energy_noisy + amp * 0.6;
 
     let color = hsv2rgb(hue, saturation, value);
 
-    let final_rgb = bg.rgb + color * energy;
+    let final_rgb = bg.rgb + color * energy_noisy;
 
     return vec4<f32>(final_rgb, bg.a);
 }

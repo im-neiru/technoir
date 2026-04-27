@@ -1,3 +1,4 @@
+mod desktop_handles;
 mod event_loop;
 mod manager;
 mod state;

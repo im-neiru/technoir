@@ -8,7 +8,7 @@ use windows_sys::Win32::{
     UI::WindowsAndMessaging::*,
 };
 
-use common::ScreenBounds;
+use crate::ScreenBounds;
 
 #[derive(Debug)]
 pub struct WallpaperTarget {

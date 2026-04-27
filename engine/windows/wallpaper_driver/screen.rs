@@ -14,7 +14,7 @@ use windows_sys::{
     core::BOOL,
 };
 
-use common::ScreenBounds;
+use crate::{screen_bounds::ScreenBounds, windows::messages::WM_APP_TERMINATE};
 
 use super::target::WallpaperTarget;
 
@@ -180,14 +180,7 @@ impl Screen {
     #[inline]
     pub fn send_terminate(&self) {
         if let Some(target) = &self.target {
-            unsafe {
-                PostMessageW(
-                    target.hwnd.as_ptr(),
-                    crate::platforms::windows::messages::WM_APP_TERMINATE,
-                    0,
-                    0,
-                )
-            };
+            unsafe { PostMessageW(target.hwnd.as_ptr(), WM_APP_TERMINATE, 0, 0) };
         }
     }
 }

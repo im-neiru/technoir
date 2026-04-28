@@ -241,8 +241,8 @@ impl Visualizer {
     }
 
     fn load_noise_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> Option<wgpu::Texture> {
-        let width = 1024;
-        let height = 1024;
+        let width = 2048;
+        let height = 2048;
         let mut data = vec![0u8; width * height * 4];
 
         for y in 0..height {
@@ -312,14 +312,14 @@ impl Visualizer {
         };
 
         let avg = avg_left.max(avg_right);
-        let target_lum = (1.0 - avg * 0.3).max(0.2);
+        let target_dim = (1.0 - avg * 0.6).max(0.2);
 
         let alpha = 0.2;
 
-        let lum_value = self.prev_lum + (target_lum - self.prev_lum) * alpha;
+        let lum_value = self.prev_lum + (target_dim - self.prev_lum) * alpha;
         self.prev_lum = lum_value;
         let mut uniforms = Uniforms {
-            brightness: lum_value,
+            lum: lum_value,
             time,
             pad: [0.0; 2],
             spectrum: [[0.0; 4]; 16],
@@ -330,7 +330,7 @@ impl Visualizer {
         for i in 0..count {
             let l = left[i];
             let r = right[i];
-            let mono = (l + r) * 0.5;
+            let mono = (l + r) * 0.80 - 0.05;
 
             uniforms.spectrum[i] = [mono, mono, mono, mono];
         }
@@ -389,7 +389,7 @@ use bytemuck::{Pod, Zeroable};
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 struct Uniforms {
-    pub brightness: f32,
+    pub lum: f32,
     pub time: f32,
     pub pad: [f32; 2],
 

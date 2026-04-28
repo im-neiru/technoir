@@ -1,16 +1,14 @@
 struct VertexOutput {
-    @builtin(position) clip_position: vec4<f32>,
-    @location(0) tex_coords: vec2<f32>,
+    @builtin(position) clip_pos: vec4<f32>,
+    @location(0) uv: vec2<f32>,
 };
 
 struct Globals {
-    brightness: f32,
+    lum: f32,
     time: f32,
-    _pad0: vec2<f32>,
-
+    _padding: vec2<f32>,
     spectrum: array<vec4<f32>, 16>,
 };
-
 
 @group(0) @binding(0) var t_diffuse: texture_2d<f32>;
 @group(0) @binding(1) var s_diffuse: sampler;
@@ -18,161 +16,149 @@ struct Globals {
 @group(0) @binding(3) var s_noise: sampler;
 @group(0) @binding(4) var<uniform> globals: Globals;
 
-const PI: f32 = 3.1415926;
-const ROTATION_OFFSET: f32 = 1.570795;
-const ASPECT: f32 = 16.0 / 9.0;
+const PI: f32 = 3.14159265;
+const ROTATION: f32 = 1.5708;
+const ASPECT: f32 = 1.77777778; // 16:9
 
-fn spectrum_get(i: i32) -> f32 {
-    let vi = i / 4;
-    let ci = i % 4;
-    let v = globals.spectrum[vi];
+const SPEC_RADIUS: f32 = 2.0;
+const SPEC_GAUSS: f32 = 0.7;
 
-    if ci == 0 { return v.x; }
-    if ci == 1 { return v.y; }
-    if ci == 2 { return v.z; }
-    return v.w;
+const BASE_RAD: f32 = 0.48;
+const DIM_MOD: f32 = 0.18;
+const MIN_RAD: f32 = 0.24;
+const WAVE_AMP: f32 = 0.004;
+
+const FALLOFF: f32 = 0.65;
+const CORE_OUTER: f32 = 0.004;
+const CORE_INNER: f32 = 0.0015;
+const GLOW_EXP: f32 = 24.0;
+const GLOW_GAIN: f32 = 0.52;
+
+const SWIRL_STRENGTH: f32 = 5.5;
+const SWIRL_SPEED: f32 = 0.8;
+const GRAIN_STRENGTH: f32 = 0.75;
+const NOISE_SPEED: f32 = 0.015;
+
+const INSET_WIDTH: f32 = 0.5;
+const SHIFT_STRENGTH: f32 = 0.38;
+const BOOST_VALUE: f32 = 0.28;
+const HUE_SPEED: f32 = 0.55;
+
+fn get_spectrum_val(index: i32) -> f32 {
+    let vec_idx = index >> 2;
+    let component = index & 3;
+    let data = globals.spectrum[vec_idx];
+
+    if component == 0 { return data.x; }
+    if component == 1 { return data.y; }
+    if component == 2 { return data.z; }
+    return data.w;
 }
 
-fn spectrum_sample(i: f32) -> f32 {
-    let center = i * 0.5;
+fn sample_spectrum(position: f32) -> f32 {
+    let center = position * 0.5;
+    var total = 0.0;
+    var weight_sum = 0.0;
 
-    var sum: f32 = 0.0;
-    var weight_sum: f32 = 0.0;
+    for (var k: f32 = -SPEC_RADIUS; k <= SPEC_RADIUS; k += 1.0) {
+        let f_idx = clamp(center + k, 0.0, 63.0);
+        let i_idx = i32(f_idx);
+        let val = mix(get_spectrum_val(i_idx), get_spectrum_val(i_idx + 1), fract(f_idx));
 
-    let radius = 3.0;
-
-    var k = -radius;
-    loop {
-        if k > radius { break; }
-
-        let sample_index = center + k;
-
-        let fi = clamp(sample_index, 0.0, 63.0);
-        let i0 = i32(fi);
-        let i1 = min(i0 + 1, 63);
-
-        let t = fi - f32(i0);
-
-        let a = spectrum_get(i0);
-        let b = spectrum_get(i1);
-
-        let v = mix(a, b, t);
-
-        let w = exp(-k * k * 0.6);
-
-        sum = sum + v * w;
-        weight_sum = weight_sum + w;
-
-        k = k + 1.0;
+        let weight = exp(-k * k * SPEC_GAUSS);
+        total += val * weight;
+        weight_sum += weight;
     }
-
-    return sum / weight_sum;
+    return total / max(weight_sum, 0.0001);
 }
 
-fn spectrum_circle(t: f32) -> f32 {
-    let mirrored = abs(t * 2.0 - 1.0);
-
-    let index = mirrored * 127.0;
-
-    return spectrum_sample(index);
+fn get_circular_amplitude(t: f32) -> f32 {
+    let mirror = abs(t * 2.0 - 1.0);
+    return sample_spectrum(mirror * 127.0);
 }
 
-fn rotate(v: vec2<f32>, a: f32) -> vec2<f32> {
-    let c = cos(a);
-    let s = sin(a);
-    return vec2<f32>(
-        v.x * c - v.y * s,
-        v.x * s + v.y * c
-    );
+fn apply_swirl(uv: vec2<f32>, strength: f32, time: f32) -> vec2<f32> {
+    let dir = uv - 0.5;
+    let radius = length(dir);
+    let angle = strength * radius * (sin(time * SWIRL_SPEED) * 0.3 + 1.0) * 0.8;
+
+    let rot = dir + vec2<f32>(dir.y, -dir.x) * angle;
+    return 0.5 + rot * inverseSqrt(1.0 + angle * angle);
 }
 
 @vertex
-fn vs_main(@builtin(vertex_index) i: u32) -> VertexOutput {
+fn vs_main(@builtin(vertex_index) id: u32) -> VertexOutput {
     var out: VertexOutput;
+    let x = f32(1 - i32(id)) * 3.0;
+    let y = f32((i32(id) & 1) * 2 - 1) * 3.0;
 
-    let x = f32(1 - i32(i)) * 3.0;
-    let y = f32((i32(i) & 1) * 2 - 1) * 3.0;
-
-    out.clip_position = vec4<f32>(x, y, 0.0, 1.0);
-
-    out.tex_coords = vec2<f32>(
-        x * 0.5 + 0.5,
-        1.0 - (y * 0.5 + 0.5)
-    );
-
+    out.clip_pos = vec4<f32>(x, y, 0.0, 1.0);
+    out.uv = vec2<f32>(x * 0.5 + 0.5, 1.0 - (y * 0.5 + 0.5));
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let noise_uv = in.tex_coords * vec2<f32>(1.0, 1.0);
-    let n = textureSample(t_noise, s_noise, noise_uv + vec2<f32>(0.0, globals.time * 0.02)).r;
+    let sampled_bg = textureSample(t_diffuse, s_diffuse, in.uv);
+    let background = vec4<f32>(sampled_bg.rgb * globals.lum, sampled_bg.a);
 
-    let tex = textureSample(t_diffuse, s_diffuse, in.tex_coords);
-    let bg = vec4<f32>(tex.rgb * globals.brightness, tex.a);
+    let ndc_uv = in.uv * 2.0 - 1.0;
+    let aspect_uv = vec2<f32>(ndc_uv.x * ASPECT, ndc_uv.y);
+    let rotated_uv = rotate_vector(aspect_uv, ROTATION);
 
-    let uv0 = in.tex_coords * 2.0 - 1.0;
-    let uv = vec2<f32>(uv0.x * ASPECT, uv0.y);
+    let dist_to_center = length(rotated_uv);
+    let angle = (atan2(rotated_uv.y, rotated_uv.x) + PI) * 0.1591549;
 
+    let amplitude = get_circular_amplitude(angle);
+    let base_rad = max(BASE_RAD - globals.lum * DIM_MOD, MIN_RAD);
+    let ring_wave = base_rad + amplitude * WAVE_AMP;
 
-    let uv_r = rotate(uv, ROTATION_OFFSET);
+    let ring_dist = abs(dist_to_center - ring_wave);
+    let falloff_mask = 1.0 - smoothstep(0.0, FALLOFF, dist_to_center);
 
-    let r = length(uv_r);
-    let angle = atan2(uv_r.y, uv_r.x);
+    let core_light = smoothstep(CORE_OUTER, CORE_INNER, ring_dist);
+    let glow_light = exp(-ring_dist * GLOW_EXP);
 
-    let t = (angle + PI) / (2.0 * PI);
+    let energy = clamp(core_light + glow_light * GLOW_GAIN, 0.0, 1.0) * falloff_mask;
 
+    let swirl_uv = apply_swirl(in.uv, SWIRL_STRENGTH, globals.time);
+    let noise_scroll = vec2<f32>(0.0, globals.time * NOISE_SPEED);
+    let noise_val = textureSample(t_noise, s_noise, swirl_uv + noise_scroll).r;
 
-    let amp = spectrum_circle(t);
+    let grain = (noise_val - 0.5) * GRAIN_STRENGTH * energy * (1.0 + dist_to_center);
+    let noisy_energy = clamp(energy + grain, 0.0, 1.0);
 
-    let base_radius = max(0.48 - globals.brightness * 0.18, 0.24);
-    let wave = base_radius + amp * 0.004;
+    let inset = smoothstep(ring_wave - 0.13, ring_wave - INSET_WIDTH, dist_to_center);
+    let downward_bias = (1.0 - aspect_uv.y) * SHIFT_STRENGTH * inset;
 
-    let dist = abs(r - wave);
+    let hue = fract(angle + globals.time * HUE_SPEED + amplitude * 0.002 + downward_bias * 0.12);
+    let sat = 1.0 - amplitude * 0.061;
+    let val = noisy_energy * 0.92 + amplitude * 0.75 + downward_bias * BOOST_VALUE;
 
-    let core = smoothstep(0.006, 0.002, dist);
-    let glow = exp(-dist * 32.0);
+    let ring_rgb = hsv_to_rgb(hue, sat, val);
+    let final_color = background.rgb + ring_rgb * noisy_energy;
 
-    let energy = clamp(core + glow * 0.5, 0.0, 1.0);
-
-    let grain_strength = 0.8;
-    let grain = (n - 0.5) * grain_strength * energy;
-    let energy_noisy = clamp(energy + grain, 0.0, 1.0);
-
-    let hue_shift = globals.time * 0.6 + amp * 0.002;
-    let hue = fract(t + hue_shift);
-
-    let saturation = 0.9;
-
-    let value = energy_noisy + amp * 0.6;
-
-    let color = hsv2rgb(hue, saturation, value);
-
-    let final_rgb = bg.rgb + color * energy_noisy;
-
-    return vec4<f32>(final_rgb, bg.a);
+    return vec4<f32>(final_color, background.a);
 }
 
-fn hsv2rgb(h: f32, s: f32, v: f32) -> vec3<f32> {
-    let c = v * s;
-    let x = c * (1.0 - abs((h * 6.0) % 2.0 - 1.0));
-    let m = v - c;
+fn rotate_vector(v: vec2<f32>, angle: f32) -> vec2<f32> {
+    let cos_a = cos(angle);
+    let sin_a = sin(angle);
+    return vec2<f32>(v.x * cos_a - v.y * sin_a, v.x * sin_a + v.y * cos_a);
+}
+
+fn hsv_to_rgb(h: f32, s: f32, v: f32) -> vec3<f32> {
+    let chroma = v * s;
+    let x = chroma * (1.0 - abs((h * 6.0) % 2.0 - 1.0));
+    let m = v - chroma;
 
     var rgb: vec3<f32>;
+    if h < 0.1667 { rgb = vec3<f32>(chroma, x, 0.0); }
+    else if h < 0.3333 { rgb = vec3<f32>(x, chroma, 0.0); }
+    else if h < 0.5000 { rgb = vec3<f32>(0.0, chroma, x); }
+    else if h < 0.6667 { rgb = vec3<f32>(0.0, x, chroma); }
+    else if h < 0.8333 { rgb = vec3<f32>(x, 0.0, chroma); }
+    else { rgb = vec3<f32>(chroma, 0.0, x); }
 
-    if (h < 0.1666667) {
-        rgb = vec3<f32>(c, x, 0.0);
-    } else if (h < 0.3333333) {
-        rgb = vec3<f32>(x, c, 0.0);
-    } else if (h < 0.5) {
-        rgb = vec3<f32>(0.0, c, x);
-    } else if (h < 0.6666667) {
-        rgb = vec3<f32>(0.0, x, c);
-    } else if (h < 0.8333333) {
-        rgb = vec3<f32>(x, 0.0, c);
-    } else {
-        rgb = vec3<f32>(c, 0.0, x);
-    }
-
-    return rgb + vec3<f32>(m);
+    return rgb + m;
 }

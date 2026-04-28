@@ -44,7 +44,7 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
             }
         }
 
-        Sleep(14);
+        Sleep(26);
     }
 }
 

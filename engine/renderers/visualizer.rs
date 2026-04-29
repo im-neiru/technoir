@@ -1,6 +1,10 @@
 use bytemuck::{Pod, Zeroable};
 use glam::*;
-use vello::wgpu;
+
+use parley::{
+    Alignment, AlignmentOptions, FontContext, FontWeight, InlineBox, InlineBoxKind, Layout,
+    LayoutContext, LineHeight, PositionedLayoutItem, StyleProperty,
+};
 
 use super::Renderer;
 use crate::samplers::SpectrumAudioLoopback;

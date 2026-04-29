@@ -9,7 +9,6 @@ use core::{
     ptr::{self, NonNull},
 };
 
-use vello::wgpu;
 use windows_sys::Win32::{
     Foundation::CloseHandle,
     System::{

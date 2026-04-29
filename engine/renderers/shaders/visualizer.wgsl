@@ -6,7 +6,8 @@ struct VertexOutput {
 struct Ephemerals {
     lum: f32,
     time: f32,
-    _padding: vec2<f32>,
+    swirl_factor: f32,
+    _padding: f32,
     spectrum: array<vec4<f32>, 16>,
 };
 
@@ -39,8 +40,6 @@ const CORE_INNER: f32 = 0.0015;
 const GLOW_EXP: f32 = 24.0;
 const GLOW_GAIN: f32 = 0.52;
 
-const SWIRL_STRENGTH: f32 = 5.5;
-const SWIRL_SPEED: f32 = 0.8;
 const GRAIN_STRENGTH: f32 = 0.75;
 const NOISE_SPEED: f32 = 0.015;
 
@@ -82,10 +81,10 @@ fn get_circular_amplitude(t: f32) -> f32 {
     return sample_spectrum(mirror * 127.0);
 }
 
-fn apply_swirl(uv: vec2<f32>, strength: f32, time: f32) -> vec2<f32> {
+fn apply_swirl(uv: vec2<f32>, time: f32) -> vec2<f32> {
     let dir = uv - 0.5;
     let radius = length(dir);
-    let angle = strength * radius * (sin(time * SWIRL_SPEED) * 0.3 + 1.0) * 0.8;
+    let angle = radius * ephemerals.swirl_factor;
 
     let rot = dir + vec2<f32>(dir.y, -dir.x) * angle;
     return 0.5 + rot * inverseSqrt(1.0 + angle * angle);
@@ -132,7 +131,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let energy = clamp(core_light + glow_light * GLOW_GAIN, 0.0, 1.0) * falloff_mask;
 
-    let swirl_uv = apply_swirl(in.uv, SWIRL_STRENGTH, ephemerals.time);
+    let swirl_uv = apply_swirl(in.uv, ephemerals.time);
     let noise_scroll = vec2<f32>(0.0, ephemerals.time * NOISE_SPEED);
     let noise_val = textureSample(t_noise, s_noise, swirl_uv + noise_scroll).r;
 

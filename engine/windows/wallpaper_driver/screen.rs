@@ -23,7 +23,8 @@ use crate::{screen_bounds::ScreenBounds, windows::messages::WM_APP_TERMINATE};
 use super::target::WallpaperTarget;
 
 pub struct Screen {
-    _hmonitor: HMONITOR,
+    pub(super) hmonitor: HMONITOR,
+    pub(super) is_filled: bool,
     name: String,
     bounds: ScreenBounds,
     pub(super) target: Option<WallpaperTarget>,
@@ -176,7 +177,7 @@ impl Screen {
             let height = (rect.bottom - rect.top).unsigned_abs();
 
             screens.push(Screen {
-                _hmonitor: hmonitor,
+                hmonitor,
                 name,
                 bounds: ScreenBounds {
                     x: rect.left,
@@ -185,6 +186,7 @@ impl Screen {
                     height,
                 },
                 target: None,
+                is_filled: false,
             });
         }
 

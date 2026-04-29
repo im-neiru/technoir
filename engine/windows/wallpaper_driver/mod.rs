@@ -84,20 +84,33 @@ impl WallpaperDriver {
     }
 
     #[inline]
-    pub fn poll_overlay(&self) -> bool {
+    pub fn poll_desktop_state(&mut self) {
         let Some(watcher) = self.watcher.as_ref() else {
-            return false;
+            return;
         };
 
-        let Some(hwnd) = watcher.poll() else {
-            return false;
+        let Some(entry) = watcher.poll() else {
+            return;
         };
 
-        if self.desktop_handles.is_desktop_handle(hwnd) {
-            return false;
+        if self
+            .desktop_handles
+            .is_desktop_handle(entry.window_handle())
+        {
+            return;
         }
 
-        true
+        for s in self.screens.iter_mut() {
+            if s.hmonitor.addr() == entry.monitor_handle().addr().get() {
+                println!(
+                    "{:x} {:x} {}",
+                    s.hmonitor.addr(),
+                    entry.window_handle().addr(),
+                    entry.is_full()
+                );
+                s.is_filled = entry.is_full()
+            }
+        }
     }
 
     fn run_internal(&mut self) {

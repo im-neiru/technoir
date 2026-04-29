@@ -11,6 +11,7 @@ path = "lib.rs"
 bytemuck.workspace = true
 crossbeam-queue.workspace = true
 glam.workspace = true
+glyphon.workspace = true
 image.workspace = true
 rand.workspace = true
 rapidhash.workspace = true

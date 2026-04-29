@@ -18,10 +18,12 @@ struct Scaling {
 
 @group(0) @binding(0) var t_diffuse: texture_2d<f32>;
 @group(0) @binding(1) var s_diffuse: sampler;
-@group(0) @binding(2) var t_noise: texture_2d<f32>;
-@group(0) @binding(3) var s_noise: sampler;
-@group(0) @binding(4) var<uniform> ephemerals: Ephemerals;
-@group(0) @binding(5) var<uniform> scaling: Scaling;
+@group(0) @binding(2) var t_text_mask: texture_2d<f32>;
+@group(0) @binding(3) var s_text_mask: sampler;
+@group(0) @binding(4) var t_noise: texture_2d<f32>;
+@group(0) @binding(5) var s_noise: sampler;
+@group(0) @binding(6) var<uniform> ephemerals: Ephemerals;
+@group(0) @binding(7) var<uniform> scaling: Scaling;
 
 const PI: f32 = 3.14159265;
 const ROTATION: f32 = 1.5708;
@@ -108,9 +110,36 @@ fn sample_bg(uv: vec2<f32>) -> vec4<f32> {
     return vec4<f32>(sampled_bg.rgb * ephemerals.lum, sampled_bg.a);
 }
 
+fn sample_text(
+    uv: vec2<f32>,
+    scaling: vec2<f32>,
+    amplitude: f32
+) -> f32 {
+    var centered_uv = uv - 0.5;
+
+    let text_size_factor = 4.0;
+
+    centered_uv = centered_uv * clamp(ephemerals.lum * text_size_factor, 0.5, 1.0) * scaling;
+
+    let wobble = amplitude * 0.00005;
+    let final_uv = centered_uv + wobble;
+
+    let tex_uv = final_uv + 0.5;
+
+    if tex_uv.x < 0.0 || tex_uv.x > 1.0 || tex_uv.y < 0.0 || tex_uv.y > 1.0 {
+        return 0.0;
+    }
+
+    let clamped_uv = clamp(tex_uv, vec2<f32>(0.0), vec2<f32>(1.0));
+
+    return textureSample(t_text_mask, s_text_mask, clamped_uv).r;
+}
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let bg_sample = sample_bg(in.uv);
+    let bg = bg_sample.rgb;
+
     let ndc_uv = in.uv * 2.0 - 1.0;
     let aspect_uv = vec2<f32>(ndc_uv.x * scaling.aspect_ratio, ndc_uv.y);
 
@@ -120,33 +149,72 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let angle = (atan2(rotated_uv.y, rotated_uv.x) + PI) * 0.1591549;
 
     let amplitude = get_circular_amplitude(angle);
+
     let base_rad = max(BASE_RAD - ephemerals.lum * DIM_MOD, MIN_RAD);
     let ring_wave = base_rad + amplitude * WAVE_AMP;
 
     let ring_dist = abs(dist_to_center - ring_wave);
+
     let falloff_mask = 1.0 - smoothstep(0.0, FALLOFF, dist_to_center);
 
     let core_light = smoothstep(CORE_OUTER, CORE_INNER, ring_dist);
     let glow_light = exp(-ring_dist * GLOW_EXP);
 
-    let energy = clamp(core_light + glow_light * GLOW_GAIN, 0.0, 1.0) * falloff_mask;
+    let energy = clamp(core_light + glow_light * GLOW_GAIN, 0.0, 1.0) *
+        falloff_mask;
+
+    let ring_alpha = energy;
 
     let swirl_uv = apply_swirl(in.uv, ephemerals.time);
     let noise_scroll = vec2<f32>(0.0, ephemerals.time * NOISE_SPEED);
+
     let noise_val = textureSample(t_noise, s_noise, swirl_uv + noise_scroll).r;
 
-    let grain = (noise_val - 0.5) * GRAIN_STRENGTH * energy * (1.0 + dist_to_center);
-    let noisy_energy = clamp(energy + grain, 0.0, 1.0);
+    let grain = (noise_val - 0.5) *
+        GRAIN_STRENGTH *
+        ring_alpha *
+        (1.0 + dist_to_center);
 
-    let inset = smoothstep(ring_wave - 0.13, ring_wave - INSET_WIDTH, dist_to_center);
-    let downward_bias = (1.0 - aspect_uv.y) * SHIFT_STRENGTH * inset;
+    let noisy_energy = clamp(ring_alpha + grain, 0.0, 1.0);
 
-    let hue = fract(angle + ephemerals.time * HUE_SPEED + amplitude * 0.002 + downward_bias * 0.12);
+    let inset = smoothstep(
+        ring_wave - 0.13,
+        ring_wave - INSET_WIDTH,
+        dist_to_center
+    );
+
+    let downward_bias = (1.0 - aspect_uv.y) *
+        SHIFT_STRENGTH *
+        inset;
+
+    let hue = fract(
+        angle +
+        ephemerals.time * HUE_SPEED +
+        amplitude * 0.002 +
+        downward_bias * 0.12
+    );
+
     let sat = 1.0 - amplitude * 0.061;
-    let val = noisy_energy * 0.92 + amplitude * 0.75 + downward_bias * BOOST_VALUE;
+
+    let val = noisy_energy * 0.92 +
+        amplitude * 0.75 +
+        downward_bias * BOOST_VALUE;
 
     let ring_rgb = hsv_to_rgb(hue, sat, val);
-    let final_color = bg_sample.rgb + ring_rgb * noisy_energy;
+
+    let ring = ring_rgb * noisy_energy;
+
+    let color_after_ring = bg + ring;
+
+    let text = sample_text(in.uv, vec2<f32>(scaling.aspect_ratio, 1.0), amplitude);
+
+    let text_strength = smoothstep(0.08, 0.99, text) * 0.4;
+
+    let text_alpha = clamp(text_strength * noise_val * 0.8, 0.0, 1.0);
+
+    let text_color = ring_rgb * text_alpha;
+
+    let final_color = color_after_ring + text_color;
 
     return vec4<f32>(final_color, bg_sample.a);
 }

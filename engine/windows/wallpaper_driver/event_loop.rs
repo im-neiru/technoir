@@ -16,7 +16,6 @@ use crate::windows::{
 
 #[allow(unsafe_op_in_unsafe_fn)]
 pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
-    let mut delay = 22;
     let mut msg = mem::zeroed();
 
     driver.init();
@@ -34,29 +33,20 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
             DispatchMessageW(&msg);
         }
 
-        if driver.poll_overlay() {
-            if delay != 300 {
-                println!("delay {}", delay);
-            }
-            delay = 300;
-        } else {
-            if delay != 18 {
-                println!("delay {}", delay);
-            }
-
-            delay = 18;
-        }
+        driver.poll_desktop_state();
 
         fft.poll();
         let elapsed = ref_time.elapsed().as_secs_f32();
 
         for screen in &mut driver.screens {
-            if let Some(target) = screen.target.as_mut() {
-                target.visualizer.render(&mut fft, elapsed);
+            if !screen.is_filled {
+                if let Some(target) = screen.target.as_mut() {
+                    target.visualizer.render(&mut fft, elapsed);
+                }
             }
         }
 
-        Sleep(delay);
+        Sleep(17);
     }
 }
 

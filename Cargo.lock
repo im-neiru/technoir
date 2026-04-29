@@ -518,6 +518,7 @@ name = "engine"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "glam",
  "image",
  "rand 0.10.1",
  "raw-window-handle",
@@ -808,6 +809,16 @@ dependencies = [
  "khronos_api",
  "log",
  "xml-rs",
+]
+
+[[package]]
+name = "glam"
+version = "0.32.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f70749695b063ecbf6b62949ccccde2e733ec3ecbbd71d467dca4e5c6c97cca0"
+dependencies = [
+ "bytemuck",
+ "rand 0.10.1",
 ]
 
 [[package]]

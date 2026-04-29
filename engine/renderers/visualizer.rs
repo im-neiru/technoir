@@ -1,6 +1,11 @@
 use bytemuck::{Pod, Zeroable};
 use glam::*;
 
+use glyphon::{
+    Attrs, Color, FontSystem, Metrics, Resolution, SwashCache, TextArea, TextAtlas, TextBounds,
+    TextRenderer, Viewport,
+};
+
 use super::Renderer;
 use crate::samplers::SpectrumAudioLoopback;
 
@@ -19,6 +24,11 @@ pub struct Visualizer {
     texture_size: Vec2,
     u_ephemerals: wgpu::Buffer,
     u_scaling: wgpu::Buffer,
+
+    text_renderer: TextRenderer,
+    atlas: TextAtlas,
+    tex_viewport: Viewport,
+    text_mask: wgpu::Texture,
 }
 
 const SAMPLE_COUNT: usize = 64;
@@ -57,6 +67,21 @@ impl Visualizer {
             wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             false,
         );
+
+        let text_mask = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Noise Texture"),
+            size: wgpu::Extent3d {
+                width: 600,
+                height: 600,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
 
         let bg_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -208,6 +233,70 @@ impl Visualizer {
             })
         };
 
+        let mut font_system = FontSystem::new();
+        let mut swash_cache = SwashCache::new();
+        let cache = glyphon::Cache::new(device);
+        let mut atlas =
+            TextAtlas::new(device, &renderer.queue, &cache, wgpu::TextureFormat::R8Uint);
+
+        let mut text_renderer = TextRenderer::new(
+            &mut atlas,
+            device,
+            wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            None,
+        );
+
+        let mut tex_viewport = glyphon::Viewport::new(&device, &cache);
+
+        tex_viewport.update(
+            &renderer.queue,
+            glyphon::Resolution {
+                width: 600,
+                height: 600,
+            },
+        );
+
+        let mut tex_buf = glyphon::Buffer::new(&mut font_system, glyphon::Metrics::new(12., 1.0));
+
+        let attrs = Attrs::new();
+
+        tex_buf.set_text(
+            &mut font_system,
+            "TEST",
+            &attrs,
+            glyphon::Shaping::Advanced,
+            Some(glyphon::cosmic_text::Align::Center),
+        );
+
+        text_renderer
+            .prepare(
+                device,
+                &renderer.queue,
+                &mut font_system,
+                &mut atlas,
+                &tex_viewport,
+                [TextArea {
+                    buffer: &tex_buf,
+                    left: 0.0,
+                    top: 0.0,
+                    scale: 1.0,
+                    bounds: TextBounds {
+                        left: 0,
+                        top: 0,
+                        right: 512,
+                        bottom: 512,
+                    },
+                    default_color: Color::rgb(255, 255, 255),
+                    custom_glyphs: &[],
+                }],
+                &mut swash_cache,
+            )
+            .unwrap();
+
         let mut result = Self {
             renderer,
             prev_spectrum_l: [0.0; SAMPLE_COUNT],
@@ -220,6 +309,10 @@ impl Visualizer {
             noise_texture,
             noise_sampler,
             texture_size,
+            text_renderer,
+            tex_viewport,
+            atlas,
+            text_mask,
         };
 
         result.resize(width, height);
@@ -338,6 +431,40 @@ impl Visualizer {
             return;
         };
 
+        let mut encoder =
+            self.renderer
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Frame Encoder"),
+                });
+
+        {
+            let mask_view = self
+                .text_mask
+                .create_view(&wgpu::TextureViewDescriptor::default());
+
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Text Mask Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &mask_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None,
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+
+            self.text_renderer
+                .render(&self.atlas, &self.tex_viewport, &mut pass)
+                .unwrap();
+        }
+
         let left = audio.left_spectrum();
         let right = audio.right_spectrum();
 
@@ -387,13 +514,6 @@ impl Visualizer {
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
-
-        let mut encoder =
-            self.renderer
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Frame Encoder"),
-                });
 
         {
             let mut rp = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

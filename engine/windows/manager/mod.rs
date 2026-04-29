@@ -33,7 +33,6 @@ pub struct Manager {
     hwnd: NonNull<c_void>,
     hinstance: NonNull<c_void>,
     is_open: bool,
-    renderer: Option<crate::Renderer2d>,
     ui: ui::ManagerUi,
 }
 
@@ -45,50 +44,44 @@ impl Manager {
             hwnd,
             hinstance,
             is_open: visible,
-            renderer: None,
             ui: ui::ManagerUi::new(),
         }
     }
 
-    pub(super) async fn init_graphics(&mut self, wgpu_instance: &wgpu::Instance) {
-        let wgpu_surface = unsafe {
-            wgpu_instance
-                .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
-                    raw_display_handle: RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
+    pub(super) async fn init_graphics(&mut self, _wgpu_instance: &wgpu::Instance) {
+        // let wgpu_surface = unsafe {
+        //     wgpu_instance
+        //         .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
+        //             raw_display_handle: Some(
+        //                 RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
+        //             ),
 
-                    raw_window_handle: RawWindowHandle::Win32(Win32WindowHandle::new(
-                        self.hwnd.addr().cast_signed(),
-                    )),
-                })
-                .expect("Failed to create wgpu::Surface")
-        };
+        //             raw_window_handle: RawWindowHandle::Win32(Win32WindowHandle::new(
+        //                 self.hwnd.addr().cast_signed(),
+        //             )),
+        //         })
+        //         .expect("Failed to create wgpu::Surface")
+        // };
 
-        let (width, height) = {
-            let mut rect = unsafe { mem::zeroed() };
-            unsafe { GetClientRect(self.hwnd.as_ptr() as _, &mut rect) };
-            (
-                (rect.right - rect.left).max(1) as u32,
-                (rect.bottom - rect.top).max(1) as u32,
-            )
-        };
+        // let (width, height) = {
+        //     let mut rect = unsafe { mem::zeroed() };
+        //     unsafe { GetClientRect(self.hwnd.as_ptr() as _, &mut rect) };
+        //     (
+        //         (rect.right - rect.left).max(1) as u32,
+        //         (rect.bottom - rect.top).max(1) as u32,
+        //     )
+        // };
 
-        let rendrer = crate::Renderer2d::new(wgpu_instance, wgpu_surface, width, height).await;
+        // let rendrer = crate::Renderer2d::new(wgpu_instance, wgpu_surface, width, height).await;
 
-        self.renderer = Some(rendrer);
+        // self.renderer = Some(rendrer);
     }
 
     pub(super) fn render(&mut self) {
-        if let Some(renderer) = &mut self.renderer {
-            let (scene, base_color) = self.ui.render();
-            renderer.render_scene(scene, base_color);
-        }
+        self.ui.render();
     }
 
-    pub(super) fn resize(&mut self, width: u32, height: u32) {
-        if let Some(renderer) = &mut self.renderer {
-            renderer.resize(width, height);
-        }
-    }
+    pub(super) fn resize(&mut self, width: u32, height: u32) {}
 }
 
 impl Manager {

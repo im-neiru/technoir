@@ -8,12 +8,5 @@ impl ManagerUi {
         Self { do_redraw: true }
     }
 
-    pub fn render(&mut self) -> (&Scene, Color) {
-        (&self.scene, self.base_color)
-    }
-
-    #[inline]
-    pub fn get_base_color(&self) -> Color {
-        self.base_color
-    }
+    pub fn render(&mut self) {}
 }

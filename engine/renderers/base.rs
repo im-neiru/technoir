@@ -83,10 +83,24 @@ impl Renderer {
     }
 
     #[inline]
-    pub fn begin_frame(&self) -> wgpu::SurfaceTexture {
-        self.surface
-            .get_current_texture()
-            .expect("failed to acquire frame")
+    pub fn begin_frame(&self) -> Option<wgpu::SurfaceTexture> {
+        match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(surface_texture) => Some(surface_texture),
+            wgpu::CurrentSurfaceTexture::Suboptimal(surface_texture) => {
+                self.surface.configure(&self.device, &self.config);
+                Some(surface_texture)
+            }
+            wgpu::CurrentSurfaceTexture::Timeout
+            | wgpu::CurrentSurfaceTexture::Occluded
+            | wgpu::CurrentSurfaceTexture::Validation => None,
+            wgpu::CurrentSurfaceTexture::Outdated => {
+                self.surface.configure(&self.device, &self.config);
+                None
+            }
+            wgpu::CurrentSurfaceTexture::Lost => {
+                panic!("Surface lost")
+            }
+        }
     }
 
     #[inline]

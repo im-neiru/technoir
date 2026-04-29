@@ -8,6 +8,8 @@ use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use super::manager::Manager;
 use super::wallpaper_driver::WallpaperDriver;
 
+use raw_window_handle as rwh;
+
 pub struct State {
     pub(super) hinstance: NonNull<c_void>,
     pub(super) wgpu_instance: wgpu::Instance,
@@ -20,7 +22,7 @@ impl State {
         let hinstance = unsafe { NonNull::new(GetModuleHandleW(ptr::null_mut())) }
             .expect("Failed to retrieve module handle");
 
-        let wgpu_instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+        let wgpu_instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
             flags: wgpu::InstanceFlags::default(),
             memory_budget_thresholds: wgpu::MemoryBudgetThresholds {
@@ -28,6 +30,7 @@ impl State {
                 for_device_loss: None,
             },
             backend_options: wgpu::BackendOptions::default(),
+            display: Some(Box::new(DisplayHandle)),
         });
 
         let manager = Manager::new(hinstance, config.open_manager);
@@ -46,5 +49,14 @@ impl State {
         self.driver.run();
         self.manager.init_graphics(&self.wgpu_instance).await;
         super::manager::enter_loop(self);
+    }
+}
+
+#[derive(Debug)]
+struct DisplayHandle;
+
+impl rwh::HasDisplayHandle for DisplayHandle {
+    fn display_handle(&self) -> Result<rwh::DisplayHandle<'_>, rwh::HandleError> {
+        Ok(rwh::DisplayHandle::windows())
     }
 }

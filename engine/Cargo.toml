@@ -20,6 +20,7 @@ rustfft.workspace = true
 smol.workspace = true
 wasapi.workspace = true
 wgpu.workspace = true
+chrono = "0.4.44"
 
 ui.path = "../ui"
 

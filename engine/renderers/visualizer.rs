@@ -1,4 +1,5 @@
 use bytemuck::{Pod, Zeroable};
+use chrono::Duration;
 use glam::*;
 
 use glyphon::{
@@ -30,6 +31,10 @@ pub struct Visualizer {
     tex_viewport: Viewport,
     text_mask: wgpu::Texture,
     text_mask_view: wgpu::TextureView,
+    text_buf: glyphon::Buffer,
+    now: chrono::DateTime<chrono::Local>,
+    font_system: glyphon::FontSystem,
+    swash_cache: glyphon::SwashCache,
 }
 
 const SAMPLE_COUNT: usize = 64;
@@ -281,6 +286,8 @@ impl Visualizer {
             wgpu::TextureFormat::R8Unorm,
         );
 
+        let now = chrono::Local::now();
+
         let mut text_renderer = TextRenderer::new(
             &mut atlas,
             device,
@@ -302,20 +309,22 @@ impl Visualizer {
             },
         );
 
-        let mut tex_buf = glyphon::Buffer::new(&mut font_system, glyphon::Metrics::new(45., 45.0));
+        let mut text_buf = glyphon::Buffer::new(&mut font_system, glyphon::Metrics::new(42., 45.0));
 
-        tex_buf.set_text(
+        let human_time = now.format("%A\n%I:%M:%S %p").to_string();
+
+        text_buf.set_text(
             &mut font_system,
-            "TechNoir\nWallpaper Engine\nby Neil",
-            &Attrs::new().family(glyphon::Family::Name("Nettizen Script_TRIAL")),
+            &human_time,
+            &Attrs::new().family(glyphon::Family::Name("Zen Dots")),
             glyphon::Shaping::Advanced,
             Some(glyphon::cosmic_text::Align::Center),
         );
 
-        tex_buf.set_size(&mut font_system, Some(1024.0), Some(1024.0));
-        tex_buf.shape_until_scroll(&mut font_system, false);
+        text_buf.set_size(&mut font_system, Some(1024.0), Some(1024.0));
+        text_buf.shape_until_scroll(&mut font_system, false);
 
-        let text_height = tex_buf.layout_runs().count() as f32 * tex_buf.metrics().line_height;
+        let text_height = text_buf.layout_runs().count() as f32 * text_buf.metrics().line_height;
         let top_offset = (1024.0 - text_height) / 2.0;
 
         text_renderer
@@ -326,7 +335,7 @@ impl Visualizer {
                 &mut atlas,
                 &tex_viewport,
                 [TextArea {
-                    buffer: &tex_buf,
+                    buffer: &text_buf,
                     left: 0.0,
                     top: top_offset,
                     scale: 1.0,
@@ -360,6 +369,10 @@ impl Visualizer {
             atlas,
             text_mask,
             text_mask_view,
+            text_buf,
+            now,
+            font_system,
+            swash_cache,
         };
 
         result.resize(width, height);
@@ -477,6 +490,93 @@ impl Visualizer {
         let Some(frame) = self.renderer.begin_frame() else {
             return;
         };
+
+        let new_now = chrono::Local::now();
+
+        if new_now.signed_duration_since(self.now) > Duration::seconds(1) {
+            self.now = new_now;
+
+            // 1. Initialize buffer
+            let mut text_buf =
+                glyphon::Buffer::new(&mut self.font_system, glyphon::Metrics::new(30.0, 50.0));
+
+            // 2. Prepare the three separate strings
+            let day_string = self.now.format("%A").to_string();
+            // Use uppercase for the month to match your example (e.g., MARCH)
+            let date_string = self.now.format("\n%d %B %Y").to_string().to_uppercase();
+            let time_string = self.now.format("\n%I:%M:%S %p").to_string();
+
+            // 3. Create distinct attributes for each line
+            let day_attrs = Attrs::new()
+                .family(glyphon::Family::Name("Zen Dots"))
+                .metrics(glyphon::Metrics::new(40.0, 50.0));
+
+            // Date is slightly smaller (20.0) than the time (30.0)
+            let date_attrs = Attrs::new()
+                .family(glyphon::Family::Name("Zen Dots"))
+                .metrics(glyphon::Metrics::new(20.0, 30.0));
+
+            let time_attrs = Attrs::new()
+                .family(glyphon::Family::Name("Zen Dots"))
+                .metrics(glyphon::Metrics::new(30.0, 50.0));
+
+            // 4. Set Rich Text with the new middle line
+            text_buf.set_rich_text(
+                &mut self.font_system,
+                [
+                    (day_string.as_str(), day_attrs),
+                    (date_string.as_str(), date_attrs),
+                    (time_string.as_str(), time_attrs),
+                ],
+                &Attrs::new().family(glyphon::Family::Name("Zen Dots")),
+                glyphon::Shaping::Advanced,
+                Some(glyphon::cosmic_text::Align::Center),
+            );
+
+            // 5. Setup Layout & Alignment
+            text_buf.set_size(&mut self.font_system, Some(1024.0), Some(1024.0));
+
+            for line in text_buf.lines.iter_mut() {
+                line.set_align(Some(glyphon::cosmic_text::Align::Center));
+            }
+
+            text_buf.shape_until_scroll(&mut self.font_system, false);
+
+            // 6. Calculate Vertical Centering
+            // This logic remains the same; it will now count 3 lines instead of 2 automatically
+            let mut total_height = 0.0;
+            for run in text_buf.layout_runs() {
+                total_height += run.line_height;
+            }
+
+            let top_offset = (1024.0 - total_height) / 2.0;
+
+            // 7. Prepare the Renderer
+            self.text_renderer
+                .prepare(
+                    &self.renderer.device,
+                    &self.renderer.queue,
+                    &mut self.font_system,
+                    &mut self.atlas,
+                    &self.tex_viewport,
+                    [TextArea {
+                        buffer: &text_buf,
+                        left: 0.0,
+                        top: top_offset,
+                        scale: 1.0,
+                        bounds: TextBounds {
+                            left: 0,
+                            top: 0,
+                            right: 1024,
+                            bottom: 1024,
+                        },
+                        default_color: Color::rgb(255, 255, 255),
+                        custom_glyphs: &[],
+                    }],
+                    &mut self.swash_cache,
+                )
+                .unwrap();
+        }
 
         let mut encoder =
             self.renderer

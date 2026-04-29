@@ -84,13 +84,48 @@ impl Renderer {
         self.surface.configure(&self.device, &self.config);
     }
 
+    #[inline]
     pub fn begin_frame(&self) -> wgpu::SurfaceTexture {
         self.surface
             .get_current_texture()
             .expect("failed to acquire frame")
     }
 
+    #[inline]
     pub fn present(frame: wgpu::SurfaceTexture) {
         frame.present();
+    }
+
+    #[inline]
+    pub fn get_aspect_ratio(&self) -> f32 {
+        self.config.width as f32 / self.config.height as f32
+    }
+
+    #[inline]
+    pub fn create_buffer<T: Sized>(
+        &self,
+        label: Option<&str>,
+        usage: wgpu::BufferUsages,
+        mapped_at_creation: bool,
+    ) -> wgpu::Buffer {
+        let size = core::mem::size_of::<T>() as u64;
+
+        self.device.create_buffer(&wgpu::BufferDescriptor {
+            label,
+            size,
+            usage,
+            mapped_at_creation,
+        })
+    }
+
+    pub fn scale_texture(&self, width: u32, height: u32) -> glam::Vec2 {
+        let screen_aspect = self.get_aspect_ratio();
+        let tex_aspect = width as f32 / height as f32;
+
+        if screen_aspect > tex_aspect {
+            glam::vec2(1.0, tex_aspect / screen_aspect)
+        } else {
+            glam::vec2(screen_aspect / tex_aspect, 1.0)
+        }
     }
 }

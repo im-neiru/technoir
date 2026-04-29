@@ -1,18 +1,20 @@
 use core::{
+    ffi::c_void,
+    mem,
     num::NonZeroUsize,
     ptr::{self, NonNull},
     sync::atomic::{AtomicU8, AtomicUsize, Ordering, fence},
 };
-use std::os::raw::c_void;
 
 use crossbeam_queue::SegQueue;
 use windows_sys::Win32::{
-    Foundation::{HWND, TRUE},
+    Foundation::{FALSE, HWND, TRUE},
+    Graphics::Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromWindow},
     UI::{
         Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent},
         WindowsAndMessaging::{
-            EVENT_OBJECT_LOCATIONCHANGE, EVENT_SYSTEM_FOREGROUND, IsIconic, IsWindowVisible,
-            WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS,
+            EVENT_OBJECT_LOCATIONCHANGE, EVENT_SYSTEM_FOREGROUND, GetWindowRect, IsIconic,
+            IsWindowVisible, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS,
         },
     },
 };
@@ -20,7 +22,13 @@ use windows_sys::Win32::{
 static USER_COUNT: AtomicU8 = AtomicU8::new(0);
 static HOOK: AtomicUsize = AtomicUsize::new(0);
 static LAST_HWND: AtomicUsize = AtomicUsize::new(0);
-static QUEUE: SegQueue<NonZeroUsize> = SegQueue::new();
+static QUEUE: SegQueue<WatcherEntry> = SegQueue::new();
+
+pub struct WatcherEntry {
+    window: NonZeroUsize,
+    monitor: NonZeroUsize,
+    is_full: bool,
+}
 
 pub struct WatcherGuard;
 
@@ -69,10 +77,8 @@ pub fn start_watching() -> Option<WatcherGuard> {
 
 impl WatcherGuard {
     #[inline]
-    pub fn poll(&self) -> Option<NonNull<c_void>> {
-        let handle = QUEUE.pop()?;
-
-        Some(unsafe { NonNull::new_unchecked(handle.get() as *mut c_void) })
+    pub fn poll(&self) -> Option<WatcherEntry> {
+        QUEUE.pop()
     }
 }
 
@@ -110,9 +116,50 @@ unsafe extern "system" fn desktop_callback(
         return;
     }
 
+    let mut rect = core::mem::zeroed();
+    if GetWindowRect(hwnd.as_ptr(), &mut rect) == FALSE {
+        return;
+    }
+
+    let hmonitor = MonitorFromWindow(hwnd.as_ptr(), MONITOR_DEFAULTTONEAREST);
+    let mut monitor_info: MONITORINFO = core::mem::zeroed();
+    monitor_info.cbSize = core::mem::size_of::<MONITORINFO>() as u32;
+
+    if GetMonitorInfoW(hmonitor, &mut monitor_info) == FALSE {
+        return;
+    }
+
+    let work = monitor_info.rcWork;
+
+    let is_full = rect.left <= work.left
+        && rect.top <= work.top
+        && rect.right >= work.right
+        && rect.bottom >= work.bottom;
+
     let addr = hwnd.addr().get();
 
     if LAST_HWND.swap(addr, Ordering::Relaxed) != addr {
-        QUEUE.push(hwnd.addr());
+        QUEUE.push(WatcherEntry {
+            window: hwnd.addr(),
+            monitor: mem::transmute(hmonitor),
+            is_full,
+        });
+    }
+}
+
+impl WatcherEntry {
+    #[inline]
+    pub fn monitor_handle(&self) -> NonNull<c_void> {
+        unsafe { mem::transmute(self.monitor) }
+    }
+
+    #[inline]
+    pub fn window_handle(&self) -> NonNull<c_void> {
+        unsafe { mem::transmute(self.monitor) }
+    }
+
+    #[inline]
+    pub fn is_full(&self) -> bool {
+        self.is_full
     }
 }

@@ -72,8 +72,8 @@ impl Visualizer {
         let text_mask = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("text_mask"),
             size: wgpu::Extent3d {
-                width: 600,
-                height: 600,
+                width: 1024,
+                height: 1024,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -297,35 +297,26 @@ impl Visualizer {
         tex_viewport.update(
             &renderer.queue,
             glyphon::Resolution {
-                width: 600,
-                height: 600,
+                width: 1024,
+                height: 1024,
             },
         );
 
-        let mut tex_buf = glyphon::Buffer::new(&mut font_system, glyphon::Metrics::new(80., 24.0));
+        let mut tex_buf = glyphon::Buffer::new(&mut font_system, glyphon::Metrics::new(45., 45.0));
 
         tex_buf.set_text(
             &mut font_system,
-            "TechNoir",
-            &Attrs::new().family(glyphon::Family::Name("Zen Dots")),
+            "TechNoir\nWallpaper Engine\nby Neil",
+            &Attrs::new().family(glyphon::Family::Name("Nettizen Script_TRIAL")),
             glyphon::Shaping::Advanced,
-            Some(glyphon::cosmic_text::Align::Left),
+            Some(glyphon::cosmic_text::Align::Center),
         );
 
-        tex_buf.set_size(&mut font_system, Some(600.0), Some(600.0));
-
+        tex_buf.set_size(&mut font_system, Some(1024.0), Some(1024.0));
         tex_buf.shape_until_scroll(&mut font_system, false);
 
-        let text_width = tex_buf
-            .layout_runs()
-            .map(|run| run.line_w)
-            .fold(0.0, f32::max);
-
         let text_height = tex_buf.layout_runs().count() as f32 * tex_buf.metrics().line_height;
-
-        let scale = 1.0;
-        let left_offset = (600.0 - (text_width * scale)) / 2.0;
-        let top_offset = (600.0 - (text_height * scale)) / 2.0;
+        let top_offset = (1024.0 - text_height) / 2.0;
 
         text_renderer
             .prepare(
@@ -336,14 +327,14 @@ impl Visualizer {
                 &tex_viewport,
                 [TextArea {
                     buffer: &tex_buf,
-                    left: left_offset,
+                    left: 0.0,
                     top: top_offset,
-                    scale,
+                    scale: 1.0,
                     bounds: TextBounds {
                         left: 0,
                         top: 0,
-                        right: 600,
-                        bottom: 600,
+                        right: 1024,
+                        bottom: 1024,
                     },
                     default_color: Color::rgb(255, 255, 255),
                     custom_glyphs: &[],

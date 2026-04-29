@@ -87,7 +87,9 @@ impl WallpaperTarget {
 
             let wgpu_surface = wgpu_instance
                 .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
-                    raw_display_handle: RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
+                    raw_display_handle: Some(
+                        RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
+                    ),
 
                     raw_window_handle: RawWindowHandle::Win32(Win32WindowHandle::new(
                         hwnd.addr().cast_signed(),

@@ -1,11 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use glam::*;
 
-use parley::{
-    Alignment, AlignmentOptions, FontContext, FontWeight, InlineBox, InlineBoxKind, Layout,
-    LayoutContext, LineHeight, PositionedLayoutItem, StyleProperty,
-};
-
 use super::Renderer;
 use crate::samplers::SpectrumAudioLoopback;
 
@@ -130,7 +125,7 @@ impl Visualizer {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("BG Pipeline Layout"),
-            bind_group_layouts: &[&bg_bind_group_layout],
+            bind_group_layouts: &[Some(&bg_bind_group_layout)],
             immediate_size: 0,
         });
 
@@ -339,6 +334,10 @@ impl Visualizer {
     }
 
     pub fn render(&mut self, audio: &mut SpectrumAudioLoopback, time: f32) {
+        let Some(frame) = self.renderer.begin_frame() else {
+            return;
+        };
+
         let left = audio.left_spectrum();
         let right = audio.right_spectrum();
 
@@ -385,7 +384,6 @@ impl Visualizer {
             .queue
             .write_buffer(&self.u_ephemerals, 0, bytemuck::cast_slice(&[empherals]));
 
-        let frame = self.renderer.begin_frame();
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());

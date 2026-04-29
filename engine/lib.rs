@@ -7,7 +7,7 @@ mod samplers;
 mod screen_bounds;
 
 pub use config::Config;
-pub use renderers::{Renderer, Renderer2d, Visualizer};
+pub use renderers::{Renderer, Visualizer};
 pub use samplers::AudioLoopback;
 pub use screen_bounds::ScreenBounds;
 

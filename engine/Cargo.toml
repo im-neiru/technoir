@@ -9,6 +9,7 @@ path = "lib.rs"
 
 [dependencies]
 bytemuck.workspace = true
+crossbeam-queue.workspace = true
 glam.workspace = true
 image.workspace = true
 rand.workspace = true

@@ -11,7 +11,7 @@ use windows_sys::Win32::{
     UI::{
         Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent},
         WindowsAndMessaging::{
-            EVENT_OBJECT_LOCATIONCHANGE, EVENT_SYSTEM_FOREGROUND, IsWindowVisible,
+            EVENT_OBJECT_LOCATIONCHANGE, EVENT_SYSTEM_FOREGROUND, IsIconic, IsWindowVisible,
             WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS,
         },
     },
@@ -106,7 +106,7 @@ unsafe extern "system" fn desktop_callback(
         return;
     };
 
-    if IsWindowVisible(hwnd.as_ptr()) != TRUE {
+    if IsWindowVisible(hwnd.as_ptr()) != TRUE || IsIconic(hwnd.as_ptr()) != TRUE {
         return;
     }
 

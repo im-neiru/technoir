@@ -3,22 +3,27 @@ struct VertexOutput {
     @location(0) uv: vec2<f32>,
 };
 
-struct Globals {
+struct Ephemerals {
     lum: f32,
     time: f32,
     _padding: vec2<f32>,
     spectrum: array<vec4<f32>, 16>,
 };
 
+struct Scaling {
+    bg_scaling: vec2<f32>,
+    aspect_ratio: f32,
+}
+
 @group(0) @binding(0) var t_diffuse: texture_2d<f32>;
 @group(0) @binding(1) var s_diffuse: sampler;
 @group(0) @binding(2) var t_noise: texture_2d<f32>;
 @group(0) @binding(3) var s_noise: sampler;
-@group(0) @binding(4) var<uniform> globals: Globals;
+@group(0) @binding(4) var<uniform> ephemerals: Ephemerals;
+@group(0) @binding(5) var<uniform> scaling: Scaling;
 
 const PI: f32 = 3.14159265;
 const ROTATION: f32 = 1.5708;
-const ASPECT: f32 = 1.77777778; // 16:9
 
 const SPEC_RADIUS: f32 = 2.0;
 const SPEC_GAUSS: f32 = 0.7;
@@ -47,7 +52,7 @@ const HUE_SPEED: f32 = 0.55;
 fn get_spectrum_val(index: i32) -> f32 {
     let vec_idx = index >> 2;
     let component = index & 3;
-    let data = globals.spectrum[vec_idx];
+    let data = ephemerals.spectrum[vec_idx];
 
     if component == 0 { return data.x; }
     if component == 1 { return data.y; }
@@ -97,20 +102,26 @@ fn vs_main(@builtin(vertex_index) id: u32) -> VertexOutput {
     return out;
 }
 
+fn sample_bg(uv: vec2<f32>) -> vec4<f32> {
+    let bg_uv = (uv - 0.5) * scaling.bg_scaling + 0.5;
+    let sampled_bg = textureSample(t_diffuse, s_diffuse, bg_uv);
+
+    return vec4<f32>(sampled_bg.rgb * ephemerals.lum, sampled_bg.a);
+}
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let sampled_bg = textureSample(t_diffuse, s_diffuse, in.uv);
-    let background = vec4<f32>(sampled_bg.rgb * globals.lum, sampled_bg.a);
-
+    let bg_sample = sample_bg(in.uv);
     let ndc_uv = in.uv * 2.0 - 1.0;
-    let aspect_uv = vec2<f32>(ndc_uv.x * ASPECT, ndc_uv.y);
+    let aspect_uv = vec2<f32>(ndc_uv.x * scaling.aspect_ratio, ndc_uv.y);
+
     let rotated_uv = rotate_vector(aspect_uv, ROTATION);
 
     let dist_to_center = length(rotated_uv);
     let angle = (atan2(rotated_uv.y, rotated_uv.x) + PI) * 0.1591549;
 
     let amplitude = get_circular_amplitude(angle);
-    let base_rad = max(BASE_RAD - globals.lum * DIM_MOD, MIN_RAD);
+    let base_rad = max(BASE_RAD - ephemerals.lum * DIM_MOD, MIN_RAD);
     let ring_wave = base_rad + amplitude * WAVE_AMP;
 
     let ring_dist = abs(dist_to_center - ring_wave);
@@ -121,8 +132,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let energy = clamp(core_light + glow_light * GLOW_GAIN, 0.0, 1.0) * falloff_mask;
 
-    let swirl_uv = apply_swirl(in.uv, SWIRL_STRENGTH, globals.time);
-    let noise_scroll = vec2<f32>(0.0, globals.time * NOISE_SPEED);
+    let swirl_uv = apply_swirl(in.uv, SWIRL_STRENGTH, ephemerals.time);
+    let noise_scroll = vec2<f32>(0.0, ephemerals.time * NOISE_SPEED);
     let noise_val = textureSample(t_noise, s_noise, swirl_uv + noise_scroll).r;
 
     let grain = (noise_val - 0.5) * GRAIN_STRENGTH * energy * (1.0 + dist_to_center);
@@ -131,14 +142,14 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let inset = smoothstep(ring_wave - 0.13, ring_wave - INSET_WIDTH, dist_to_center);
     let downward_bias = (1.0 - aspect_uv.y) * SHIFT_STRENGTH * inset;
 
-    let hue = fract(angle + globals.time * HUE_SPEED + amplitude * 0.002 + downward_bias * 0.12);
+    let hue = fract(angle + ephemerals.time * HUE_SPEED + amplitude * 0.002 + downward_bias * 0.12);
     let sat = 1.0 - amplitude * 0.061;
     let val = noisy_energy * 0.92 + amplitude * 0.75 + downward_bias * BOOST_VALUE;
 
     let ring_rgb = hsv_to_rgb(hue, sat, val);
-    let final_color = background.rgb + ring_rgb * noisy_energy;
+    let final_color = bg_sample.rgb + ring_rgb * noisy_energy;
 
-    return vec4<f32>(final_color, background.a);
+    return vec4<f32>(final_color, bg_sample.a);
 }
 
 fn rotate_vector(v: vec2<f32>, angle: f32) -> vec2<f32> {

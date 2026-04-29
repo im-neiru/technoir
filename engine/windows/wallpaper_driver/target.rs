@@ -7,7 +7,7 @@ use core::{
 use raw_window_handle::{
     RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle,
 };
-use vello::wgpu;
+
 use windows_sys::Win32::{
     Foundation::{ERROR_CLASS_ALREADY_EXISTS, GetLastError},
     UI::WindowsAndMessaging::*,

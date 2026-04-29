@@ -27,8 +27,6 @@ use raw_window_handle::{
 
 use super::messages::{WM_APP_TERMINATE, WM_USER_TRAY};
 
-use vello::wgpu;
-
 pub(crate) use event_loop::enter_loop;
 
 pub struct Manager {

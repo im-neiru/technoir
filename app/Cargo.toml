@@ -10,7 +10,7 @@ path = "main.rs"
 [dependencies]
 smol.workspace = true
 raw-window-handle.workspace = true
-vello.workspace = true
+wgpu = "29.0.1"
 
 
 engine.path = "../engine"

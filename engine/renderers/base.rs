@@ -1,5 +1,3 @@
-use vello::wgpu;
-
 pub struct Renderer {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,

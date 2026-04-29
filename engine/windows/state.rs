@@ -3,7 +3,6 @@ use core::{
     ptr::{self, NonNull},
 };
 
-use vello::wgpu;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 
 use super::manager::Manager;

@@ -90,4 +90,9 @@ impl DesktopHandles {
     pub fn get_target_parent(&self) -> NonNull<c_void> {
         self.worker_w.unwrap_or(self.progman)
     }
+
+    #[inline]
+    pub(super) fn is_desktop_handle(&self, hwnd: NonNull<c_void>) -> bool {
+        hwnd == self.progman || Some(hwnd) == self.shelldll_defview
+    }
 }

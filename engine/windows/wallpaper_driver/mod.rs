@@ -9,7 +9,6 @@ use core::{
     ptr::{self, NonNull},
 };
 
-use rapidhash::RapidHashSet;
 use vello::wgpu;
 use windows_sys::Win32::{
     Foundation::CloseHandle,
@@ -17,7 +16,6 @@ use windows_sys::Win32::{
         LibraryLoader::GetModuleHandleW,
         Threading::{CreateThread, INFINITE, WaitForSingleObject},
     },
-    UI::WindowsAndMessaging::{GetForegroundWindow, IsIconic, IsWindowVisible},
 };
 
 use desktop_handles::DesktopHandles;
@@ -25,7 +23,6 @@ pub use screen::Screen;
 
 pub struct WallpaperDriver {
     screens: Vec<Screen>,
-    handle_set: RapidHashSet<usize>,
     desktop_handles: DesktopHandles,
     thread: Option<NonNull<c_void>>,
     wgpu_instance: wgpu::Instance,
@@ -42,7 +39,6 @@ impl WallpaperDriver {
             desktop_handles,
             thread: None,
             wgpu_instance: wgpu_instance.clone(),
-            handle_set: RapidHashSet::default(),
             watcher: None,
         }
     }
@@ -81,42 +77,27 @@ impl WallpaperDriver {
         self.thread = Some(thread);
     }
 
-    #[inline]
-    pub fn contains_handle(&self, handle: NonNull<c_void>) -> bool {
-        self.handle_set.contains(&handle.addr().get())
-    }
-
-    pub fn init(&mut self) {
+    pub(super) fn init(&mut self) {
         for screen in &mut self.screens {
-            if let Some(handle) = screen.init() {
-                self.handle_set.insert(handle.get());
-            }
+            screen.init();
         }
     }
 
     #[inline]
-    pub fn has_overlay(&self) -> bool {
-        let fg_hwnd = unsafe { GetForegroundWindow() };
-
-        let Some(fg_hwnd) = NonNull::new(fg_hwnd) else {
+    pub fn poll_overlay(&self) -> bool {
+        let Some(watcher) = self.watcher.as_ref() else {
             return false;
         };
 
-        if self.contains_handle(fg_hwnd) {
+        let Some(hwnd) = watcher.poll() else {
+            return false;
+        };
+
+        if self.desktop_handles.is_desktop_handle(hwnd) {
             return false;
         }
 
-        unsafe {
-            if IsWindowVisible(fg_hwnd.as_ptr()) == 0 {
-                return false;
-            }
-
-            if IsIconic(fg_hwnd.as_ptr()) != 0 {
-                return false;
-            }
-
-            true
-        }
+        true
     }
 
     fn run_internal(&mut self) {

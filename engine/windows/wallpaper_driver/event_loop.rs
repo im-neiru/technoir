@@ -2,7 +2,6 @@ use core::{
     mem,
     ptr::{self, NonNull},
 };
-use std::ptr::dangling;
 
 use windows_sys::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, WPARAM},
@@ -35,10 +34,17 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
             DispatchMessageW(&msg);
         }
 
-        if driver.has_overlay() {
-            delay = 54;
+        if driver.poll_overlay() {
+            if delay != 300 {
+                println!("delay {}", delay);
+            }
+            delay = 300;
         } else {
-            delay = 22;
+            if delay != 18 {
+                println!("delay {}", delay);
+            }
+
+            delay = 18;
         }
 
         fft.poll();

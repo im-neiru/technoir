@@ -1,6 +1,7 @@
 use core::{
     ffi::c_void,
     mem,
+    num::NonZeroUsize,
     ptr::{self, NonNull},
 };
 
@@ -56,22 +57,27 @@ impl Screen {
             }
         }
 
-        screens.into_iter().take(1).collect()
-        // screens
+        // screens.into_iter().take(1).collect()
+        screens
     }
 
-    pub(super) fn init(&mut self) {
+    #[inline]
+    pub(super) fn init(&mut self) -> Option<NonZeroUsize> {
         unsafe {
-            if let Some(target) = &self.target {
-                SetWindowLongPtrA(
-                    target.hwnd.as_ptr(),
-                    GWL_USERDATA,
-                    NonNull::from(target).addr().cast_signed().get(),
-                );
+            let Some(target) = &self.target else {
+                return None;
+            };
 
-                ShowWindow(target.hwnd.as_ptr(), SW_SHOW);
-            }
-        };
+            SetWindowLongPtrA(
+                target.hwnd.as_ptr(),
+                GWL_USERDATA,
+                NonNull::from(target).addr().cast_signed().get(),
+            );
+
+            ShowWindow(target.hwnd.as_ptr(), SW_SHOW);
+
+            Some(target.hwnd.addr())
+        }
     }
 
     fn get_friendly_name(device_name: &[u16; 32]) -> Option<String> {

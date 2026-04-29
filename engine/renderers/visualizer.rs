@@ -1,3 +1,5 @@
+use bytemuck::{Pod, Zeroable};
+use glam::*;
 use vello::wgpu;
 
 use super::Renderer;
@@ -10,14 +12,19 @@ pub struct Visualizer {
     prev_spectrum_r: [f32; SAMPLE_COUNT],
 
     prev_lum: f32,
-    uniforms_buffer: wgpu::Buffer,
     pipeline: wgpu::RenderPipeline,
-    bind_group: Option<wgpu::BindGroup>,
+    bind_group: wgpu::BindGroup,
     noise_texture: wgpu::Texture,
     noise_sampler: wgpu::Sampler,
+
+    texture_size: Vec2,
+    u_ephemerals: wgpu::Buffer,
+    u_scaling: wgpu::Buffer,
 }
 
 const SAMPLE_COUNT: usize = 64;
+const SWIRL_STRENGTH: f32 = 5.5;
+const SWIRL_SPEED: f32 = 1.0;
 
 const BG_SHADER: &str = include_str!("./shaders/visualizer.wgsl");
 
@@ -41,12 +48,16 @@ impl Visualizer {
             ..Default::default()
         });
 
-        let uniforms_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Uniforms Buffer"),
-            size: core::mem::size_of::<Uniforms>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let u_ephemerals = renderer.create_buffer::<Ephemerals>(
+            Some("u_ephemerals"),
+            wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            false,
+        );
+        let u_scaling = renderer.create_buffer::<Ephemerals>(
+            Some("u_scaling"),
+            wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            false,
+        );
 
         let bg_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -87,6 +98,16 @@ impl Visualizer {
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 4,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
@@ -137,7 +158,9 @@ impl Visualizer {
             cache: None,
         });
 
-        let bg_texture = Self::load_bg_texture("./sample/image.jpg", device, &renderer.queue);
+        let (bg_texture, texture_size) =
+            Self::load_bg_texture("./sample/image.jpg", device, &renderer.queue)
+                .expect("Failed to load background");
 
         let noise_texture = Self::load_noise_texture(device, &renderer.queue).unwrap();
 
@@ -150,8 +173,8 @@ impl Visualizer {
             ..Default::default()
         });
 
-        let bind_group = bg_texture.as_ref().map(|tex| {
-            let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        let bind_group = {
+            let view = bg_texture.create_view(&wgpu::TextureViewDescriptor::default());
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("BG Bind Group"),
                 layout: &bg_bind_group_layout,
@@ -176,11 +199,15 @@ impl Visualizer {
                     },
                     wgpu::BindGroupEntry {
                         binding: 4,
-                        resource: uniforms_buffer.as_entire_binding(),
+                        resource: u_ephemerals.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: u_scaling.as_entire_binding(),
                     },
                 ],
             })
-        });
+        };
 
         let mut result = Self {
             renderer,
@@ -188,10 +215,12 @@ impl Visualizer {
             prev_spectrum_r: [0.0; SAMPLE_COUNT],
             pipeline: bg_pipeline,
             bind_group,
-            uniforms_buffer,
+            u_ephemerals,
+            u_scaling,
             prev_lum: 0.,
             noise_texture,
             noise_sampler,
+            texture_size,
         };
 
         result.resize(width, height);
@@ -202,7 +231,7 @@ impl Visualizer {
         path: impl AsRef<std::path::Path>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-    ) -> Option<wgpu::Texture> {
+    ) -> Option<(wgpu::Texture, Vec2)> {
         let img = image::open(path).ok()?.to_rgba8();
         let (width, height) = img.dimensions();
         let raw = img.into_raw();
@@ -237,7 +266,7 @@ impl Visualizer {
             },
         );
 
-        Some(texture)
+        Some((texture, vec2(width as f32, height as f32)))
     }
 
     fn load_noise_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> Option<wgpu::Texture> {
@@ -293,6 +322,16 @@ impl Visualizer {
 
         self.prev_spectrum_l = [0.0; SAMPLE_COUNT];
         self.prev_spectrum_r = [0.0; SAMPLE_COUNT];
+
+        let scaling = Scaling {
+            bg_scaling: self.renderer.scale_texture(self.texture_size),
+            aspect_ratio: self.renderer.get_aspect_ratio(),
+            _padding: 0.,
+        };
+
+        self.renderer
+            .queue
+            .write_buffer(&self.u_scaling, 0, bytemuck::cast_slice(&[scaling]));
     }
 
     pub fn render(&mut self, audio: &mut SpectrumAudioLoopback, time: f32) {
@@ -317,11 +356,14 @@ impl Visualizer {
         let alpha = 0.2;
 
         let lum_value = self.prev_lum + (target_dim - self.prev_lum) * alpha;
+
         self.prev_lum = lum_value;
-        let mut uniforms = Uniforms {
+
+        let mut empherals = Ephemerals {
             lum: lum_value,
+            swirl_factor: SWIRL_STRENGTH * ((time * SWIRL_SPEED).sin() * 0.3 + 1.0) * 0.8,
             time,
-            pad: [0.0; 2],
+            _padding: 0.,
             spectrum: [[0.0; 4]; 16],
         };
 
@@ -332,14 +374,12 @@ impl Visualizer {
             let r = right[i];
             let mono = (l + r) * 0.80 - 0.05;
 
-            uniforms.spectrum[i] = [mono, mono, mono, mono];
+            empherals.spectrum[i] = [mono, mono, mono, mono];
         }
 
-        self.renderer.queue.write_buffer(
-            &self.uniforms_buffer,
-            0,
-            bytemuck::cast_slice(&[uniforms]),
-        );
+        self.renderer
+            .queue
+            .write_buffer(&self.u_ephemerals, 0, bytemuck::cast_slice(&[empherals]));
 
         let frame = self.renderer.begin_frame();
         let view = frame
@@ -371,11 +411,9 @@ impl Visualizer {
                 multiview_mask: None,
             });
 
-            if let Some(bind_group) = &self.bind_group {
-                rp.set_pipeline(&self.pipeline);
-                rp.set_bind_group(0, bind_group, &[]);
-                rp.draw(0..3, 0..1);
-            }
+            rp.set_pipeline(&self.pipeline);
+            rp.set_bind_group(0, &self.bind_group, &[]);
+            rp.draw(0..3, 0..1);
         }
 
         self.renderer.queue.submit(Some(encoder.finish()));
@@ -384,14 +422,20 @@ impl Visualizer {
     }
 }
 
-use bytemuck::{Pod, Zeroable};
-
-#[repr(C)]
+#[repr(C, align(16))]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
-struct Uniforms {
-    pub lum: f32,
-    pub time: f32,
-    pub pad: [f32; 2],
+struct Ephemerals {
+    lum: f32,
+    time: f32,
+    swirl_factor: f32,
+    _padding: f32,
+    spectrum: [[f32; 4]; 16],
+}
 
-    pub spectrum: [[f32; 4]; 16],
+#[repr(C, align(16))]
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+struct Scaling {
+    bg_scaling: Vec2,
+    aspect_ratio: f32,
+    _padding: f32,
 }

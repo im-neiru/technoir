@@ -118,9 +118,9 @@ impl Renderer {
         })
     }
 
-    pub fn scale_texture(&self, width: u32, height: u32) -> glam::Vec2 {
+    pub fn scale_texture(&self, texture_size: glam::Vec2) -> glam::Vec2 {
         let screen_aspect = self.get_aspect_ratio();
-        let tex_aspect = width as f32 / height as f32;
+        let tex_aspect = texture_size.x / texture_size.y;
 
         if screen_aspect > tex_aspect {
             glam::vec2(1.0, tex_aspect / screen_aspect)

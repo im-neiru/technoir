@@ -2,6 +2,7 @@ mod desktop_handles;
 mod event_loop;
 mod screen;
 mod target;
+mod watcher;
 
 use core::{
     ffi::c_void,
@@ -28,6 +29,7 @@ pub struct WallpaperDriver {
     desktop_handles: DesktopHandles,
     thread: Option<NonNull<c_void>>,
     wgpu_instance: wgpu::Instance,
+    watcher: Option<watcher::WatcherGuard>,
 }
 
 impl WallpaperDriver {
@@ -41,6 +43,7 @@ impl WallpaperDriver {
             thread: None,
             wgpu_instance: wgpu_instance.clone(),
             handle_set: RapidHashSet::default(),
+            watcher: None,
         }
     }
 
@@ -59,6 +62,8 @@ impl WallpaperDriver {
     }
 
     pub fn run(&mut self) {
+        self.watcher = watcher::start_watching();
+
         let ptr = self as *mut _ as *mut c_void;
 
         let thread = unsafe {

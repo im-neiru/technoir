@@ -2,6 +2,7 @@ use core::{
     mem,
     ptr::{self, NonNull},
 };
+use std::ptr::dangling;
 
 use windows_sys::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, WPARAM},
@@ -16,11 +17,10 @@ use crate::windows::{
 
 #[allow(unsafe_op_in_unsafe_fn)]
 pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
+    let mut delay = 22;
     let mut msg = mem::zeroed();
 
-    for screen in &mut driver.screens {
-        screen.init();
-    }
+    driver.init();
 
     let ref_time = std::time::Instant::now();
     let mut fft = crate::SpectrumAudioLoopback::new();
@@ -35,6 +35,12 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
             DispatchMessageW(&msg);
         }
 
+        if driver.has_overlay() {
+            delay = 54;
+        } else {
+            delay = 22;
+        }
+
         fft.poll();
         let elapsed = ref_time.elapsed().as_secs_f32();
 
@@ -44,7 +50,7 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
             }
         }
 
-        Sleep(26);
+        Sleep(delay);
     }
 }
 

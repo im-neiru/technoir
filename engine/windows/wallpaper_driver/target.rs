@@ -3,7 +3,6 @@ use core::{
     mem,
     ptr::{self, NonNull},
 };
-use std::collections::VecDeque;
 
 use raw_window_handle::{
     RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle,
@@ -14,7 +13,7 @@ use windows_sys::Win32::{
     UI::WindowsAndMessaging::*,
 };
 
-use crate::{Renderer, ScreenBounds};
+use crate::ScreenBounds;
 
 pub struct WallpaperTarget {
     pub(super) hwnd: NonNull<c_void>,

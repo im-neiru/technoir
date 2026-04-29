@@ -39,10 +39,10 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
         let elapsed = ref_time.elapsed().as_secs_f32();
 
         for screen in &mut driver.screens {
-            if !screen.is_filled {
-                if let Some(target) = screen.target.as_mut() {
-                    target.visualizer.render(&mut fft, elapsed);
-                }
+            if !screen.is_filled
+                && let Some(target) = screen.target.as_mut()
+            {
+                target.visualizer.render(&mut fft, elapsed);
             }
         }
 

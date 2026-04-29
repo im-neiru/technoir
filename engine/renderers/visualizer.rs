@@ -29,6 +29,7 @@ pub struct Visualizer {
     atlas: TextAtlas,
     tex_viewport: Viewport,
     text_mask: wgpu::Texture,
+    text_mask_view: wgpu::TextureView,
 }
 
 const SAMPLE_COUNT: usize = 64;
@@ -69,7 +70,7 @@ impl Visualizer {
         );
 
         let text_mask = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Noise Texture"),
+            label: Some("text_mask"),
             size: wgpu::Extent3d {
                 width: 600,
                 height: 600,
@@ -78,9 +79,19 @@ impl Visualizer {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            format: wgpu::TextureFormat::R8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: &[],
+        });
+
+        let text_mask_view = text_mask.create_view(&wgpu::TextureViewDescriptor::default());
+        let text_mask_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("text_mask_sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
         });
 
         let bg_bind_group_layout =
@@ -112,6 +123,7 @@ impl Visualizer {
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },
+
                         count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
@@ -123,6 +135,22 @@ impl Visualizer {
                     wgpu::BindGroupLayoutEntry {
                         binding: 4,
                         visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 6,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
@@ -131,7 +159,7 @@ impl Visualizer {
                         count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
-                        binding: 5,
+                        binding: 7,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
@@ -198,14 +226,15 @@ impl Visualizer {
         });
 
         let bind_group = {
-            let view = bg_texture.create_view(&wgpu::TextureViewDescriptor::default());
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("BG Bind Group"),
                 layout: &bg_bind_group_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&view),
+                        resource: wgpu::BindingResource::TextureView(
+                            &bg_texture.create_view(&wgpu::TextureViewDescriptor::default()),
+                        ),
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
@@ -213,20 +242,28 @@ impl Visualizer {
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
+                        resource: wgpu::BindingResource::TextureView(&text_mask_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wgpu::BindingResource::Sampler(&text_mask_sampler),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
                         resource: wgpu::BindingResource::TextureView(
                             &noise_texture.create_view(&Default::default()),
                         ),
                     },
                     wgpu::BindGroupEntry {
-                        binding: 3,
+                        binding: 5,
                         resource: wgpu::BindingResource::Sampler(&noise_sampler),
                     },
                     wgpu::BindGroupEntry {
-                        binding: 4,
+                        binding: 6,
                         resource: u_ephemerals.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
-                        binding: 5,
+                        binding: 7,
                         resource: u_scaling.as_entire_binding(),
                     },
                 ],
@@ -234,10 +271,15 @@ impl Visualizer {
         };
 
         let mut font_system = FontSystem::new();
+
         let mut swash_cache = SwashCache::new();
         let cache = glyphon::Cache::new(device);
-        let mut atlas =
-            TextAtlas::new(device, &renderer.queue, &cache, wgpu::TextureFormat::R8Uint);
+        let mut atlas = TextAtlas::new(
+            device,
+            &renderer.queue,
+            &cache,
+            wgpu::TextureFormat::R8Unorm,
+        );
 
         let mut text_renderer = TextRenderer::new(
             &mut atlas,
@@ -250,7 +292,7 @@ impl Visualizer {
             None,
         );
 
-        let mut tex_viewport = glyphon::Viewport::new(&device, &cache);
+        let mut tex_viewport = glyphon::Viewport::new(device, &cache);
 
         tex_viewport.update(
             &renderer.queue,
@@ -260,17 +302,30 @@ impl Visualizer {
             },
         );
 
-        let mut tex_buf = glyphon::Buffer::new(&mut font_system, glyphon::Metrics::new(12., 1.0));
-
-        let attrs = Attrs::new();
+        let mut tex_buf = glyphon::Buffer::new(&mut font_system, glyphon::Metrics::new(80., 24.0));
 
         tex_buf.set_text(
             &mut font_system,
-            "TEST",
-            &attrs,
+            "TechNoir",
+            &Attrs::new().family(glyphon::Family::Name("Zen Dots")),
             glyphon::Shaping::Advanced,
-            Some(glyphon::cosmic_text::Align::Center),
+            Some(glyphon::cosmic_text::Align::Left),
         );
+
+        tex_buf.set_size(&mut font_system, Some(600.0), Some(600.0));
+
+        tex_buf.shape_until_scroll(&mut font_system, false);
+
+        let text_width = tex_buf
+            .layout_runs()
+            .map(|run| run.line_w)
+            .fold(0.0, f32::max);
+
+        let text_height = tex_buf.layout_runs().count() as f32 * tex_buf.metrics().line_height;
+
+        let scale = 1.0;
+        let left_offset = (600.0 - (text_width * scale)) / 2.0;
+        let top_offset = (600.0 - (text_height * scale)) / 2.0;
 
         text_renderer
             .prepare(
@@ -281,14 +336,14 @@ impl Visualizer {
                 &tex_viewport,
                 [TextArea {
                     buffer: &tex_buf,
-                    left: 0.0,
-                    top: 0.0,
-                    scale: 1.0,
+                    left: left_offset,
+                    top: top_offset,
+                    scale,
                     bounds: TextBounds {
                         left: 0,
                         top: 0,
-                        right: 512,
-                        bottom: 512,
+                        right: 600,
+                        bottom: 600,
                     },
                     default_color: Color::rgb(255, 255, 255),
                     custom_glyphs: &[],
@@ -313,6 +368,7 @@ impl Visualizer {
             tex_viewport,
             atlas,
             text_mask,
+            text_mask_view,
         };
 
         result.resize(width, height);
@@ -439,17 +495,13 @@ impl Visualizer {
                 });
 
         {
-            let mask_view = self
-                .text_mask
-                .create_view(&wgpu::TextureViewDescriptor::default());
-
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Text Mask Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &mask_view,
+                    view: &self.text_mask_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                         store: wgpu::StoreOp::Store,
                     },
                     depth_slice: None,
@@ -511,11 +563,11 @@ impl Visualizer {
             .queue
             .write_buffer(&self.u_ephemerals, 0, bytemuck::cast_slice(&[empherals]));
 
-        let view = frame
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-
         {
+            let view = frame
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
+
             let mut rp = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Background Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {

@@ -5,12 +5,13 @@ use core::{
 
 use raw_window_handle as rwh;
 
-use crate::wallpaper::WallpaperDriver;
+use crate::{manager::Manager, wallpaper::WallpaperDriver};
 
 pub struct Entry {
-    wallpaper_driver: WallpaperDriver,
     wgpu_instance: wgpu::Instance,
-    hinstance: NonNull<c_void>,
+    pub(crate) hinstance: NonNull<c_void>,
+    pub(crate) wallpaper_driver: WallpaperDriver,
+    pub(crate) manager: Manager,
 }
 
 impl Entry {
@@ -34,16 +35,19 @@ impl Entry {
         });
 
         let wallpaper_driver = WallpaperDriver::new(&wgpu_instance, hinstance).await;
+        let manager = Manager::new(hinstance, true);
 
         Self {
             wallpaper_driver,
             wgpu_instance,
             hinstance,
+            manager,
         }
     }
 
     pub fn run(mut self) {
         self.wallpaper_driver.run();
+        crate::manager::enter_loop(self);
     }
 }
 

@@ -19,6 +19,7 @@ pub struct WallpaperTarget {
     pub(super) hwnd: NonNull<c_void>,
     hinstance: NonNull<c_void>,
     classname: [u16; 96],
+
     pub(super) visualizer: crate::Visualizer,
 }
 

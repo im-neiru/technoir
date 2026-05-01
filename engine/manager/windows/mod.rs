@@ -25,7 +25,7 @@ use raw_window_handle::{
     RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle,
 };
 
-use super::messages::{WM_APP_TERMINATE, WM_USER_TRAY};
+use event_loop::{WM_APP_TERMINATE, WM_USER_TRAY};
 
 pub(crate) use event_loop::enter_loop;
 
@@ -37,7 +37,7 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub(super) fn new(hinstance: NonNull<c_void>, visible: bool) -> Self {
+    pub(crate) fn new(hinstance: NonNull<c_void>, visible: bool) -> Self {
         let hwnd = unsafe { Self::new_manager_win(hinstance, visible) };
 
         Self {
@@ -143,7 +143,7 @@ impl Manager {
         .expect("Failed to create window")
     }
 
-    pub(super) fn store_state(&self, state_ptr: NonNull<super::state::State>) {
+    pub(super) fn store_state(&self, state_ptr: NonNull<crate::Entry>) {
         unsafe {
             SetWindowLongPtrW(
                 self.hwnd.as_ptr(),

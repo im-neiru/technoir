@@ -4,13 +4,18 @@ use core::{
 };
 
 use windows_sys::Win32::{
-    Foundation::{HANDLE, HWND},
-    System::Threading::CreateThread,
+    Foundation::{CloseHandle, HANDLE, HWND},
+    System::Threading::{CreateThread, INFINITE, WaitForSingleObject},
+    UI::WindowsAndMessaging::PostMessageW,
 };
 
 use crate::{
     utils::get_desktop_handles,
-    wallpaper::{Screen, event_loop::enter_loop, renderer::WallpaperRenderer},
+    wallpaper::{
+        Screen,
+        event_loop::{WM_APP_TERMINATE, enter_loop},
+        renderer::WallpaperRenderer,
+    },
 };
 
 pub struct WallpaperDriver {
@@ -43,16 +48,16 @@ impl WallpaperDriver {
 
     pub(in crate::wallpaper) fn resize_target(&mut self, hwnd: HWND, width: u32, height: u32) {
         for s in self.screens.iter_mut() {
-            if let Some(target) = s.target.as_mut() {
-                if target.hwnd.as_ptr() == hwnd {
-                    target.resize(&self.renderer.device, width, height);
-                }
+            if let Some(target) = s.target.as_mut()
+                && target.hwnd.as_ptr() == hwnd
+            {
+                target.resize(&self.renderer.device, width, height);
             }
         }
     }
 
     pub fn run(&mut self) {
-        if self.worker != ptr::null_mut() {
+        if self.worker.is_null() {
             return;
         };
 
@@ -69,7 +74,7 @@ impl WallpaperDriver {
             )
         };
 
-        if self.worker == ptr::null_mut() {
+        if self.worker.is_null() {
             panic!("Failed to create thread");
         }
     }
@@ -83,5 +88,30 @@ impl WallpaperDriver {
         let driver = unsafe { &mut *(param as *mut Self) };
         driver.run_internal();
         0
+    }
+
+    pub fn terminate(&mut self) {
+        if self.worker.is_null() {
+            return;
+        };
+
+        for s in self.screens.iter() {
+            if let Some(target) = s.target.as_ref() {
+                unsafe { PostMessageW(target.hwnd.as_ptr(), WM_APP_TERMINATE, 0, 0) };
+            }
+        }
+
+        unsafe {
+            WaitForSingleObject(self.worker, INFINITE);
+            CloseHandle(self.worker);
+        };
+
+        self.worker = ptr::null_mut();
+    }
+}
+
+impl Drop for WallpaperDriver {
+    fn drop(&mut self) {
+        self.terminate();
     }
 }

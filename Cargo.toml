@@ -15,6 +15,7 @@ raw-window-handle = "0.6.2"
 rustfft = "6.4.1"
 smol = "2.0.2"
 wasapi = "0.23.0"
+thiserror = "2.0.18"
 wgpu = "29.0.1"
 windows-sys = { version = "0.61.2", features = [
     "Win32_Devices_Display",

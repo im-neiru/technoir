@@ -18,6 +18,7 @@ rapidhash.workspace = true
 raw-window-handle.workspace = true
 rustfft.workspace = true
 smol.workspace = true
+thiserror.workspace = true
 wasapi.workspace = true
 wgpu.workspace = true
 chrono = "0.4.44"

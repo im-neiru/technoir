@@ -1,0 +1,20 @@
+[package]
+name = "wgsl-shaders"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "lib.rs"
+
+[features]
+compile = ["dep:naga"]
+
+[dependencies]
+naga = { version = "29.0.0", optional = true, features = [
+    "wgsl-in",
+    "serialize",
+    "spv-out",
+    "msl-out",
+    "hlsl-out",
+] }
+wgpu.workspace = true

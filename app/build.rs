@@ -1,4 +1,6 @@
 fn main() {
+    wgsl_shaders::compile_shaders("../shaders");
+
     if std::env::var("CARGO_CFG_TARGET_OS").unwrap() == "windows" {
         let mut res = winresource::WindowsResource::new();
         res.set_icon("../assets/technoir.ico");

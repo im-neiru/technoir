@@ -5,6 +5,7 @@ mod config;
 mod renderers;
 mod samplers;
 mod screen_bounds;
+mod wallpaper_renderer;
 
 pub use config::Config;
 pub use renderers::{Renderer, Visualizer};

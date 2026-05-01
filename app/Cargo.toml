@@ -20,3 +20,4 @@ windows-sys.workspace = true
 
 [build-dependencies]
 winresource = "0.1.31"
+wgsl-shaders = { path = "../wallpapers/wgsl", features = ["compile"] }

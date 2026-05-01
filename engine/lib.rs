@@ -5,6 +5,7 @@ mod config;
 mod renderers;
 mod samplers;
 mod screen_bounds;
+mod utils;
 mod wallpaper;
 
 pub use config::Config;

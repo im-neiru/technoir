@@ -1,10 +1,12 @@
 use wgpu::{Adapter, Backend, Backends};
 
+use crate::wallpaper::Screen;
+
 impl super::WallpaperRenderer {
     pub(super) async fn select_adapter<'s>(
         instance: &wgpu::Instance,
         preferred: Option<PreferedDeviceKey>,
-        surfaces: &[wgpu::Surface<'s>],
+        screens: &[Screen],
     ) -> Option<Adapter> {
         if let Some(preferred) = preferred {
             for adapter in instance.enumerate_adapters(Backends::PRIMARY).await {
@@ -36,9 +38,20 @@ impl super::WallpaperRenderer {
             score += (limits.max_compute_invocations_per_workgroup * 10) as i32;
             score += (limits.max_storage_buffer_binding_size / 1024 / 1024) as i32;
 
-            if !surfaces.iter().all(|s| adapter.is_surface_supported(s)) {
-                score = -1;
+            let mut surface_score = 0;
+
+            for screen in screens {
+                if let Some(target) = &screen.target {
+                    if !adapter.is_surface_supported(&target.surface) {
+                        surface_score = i32::MIN;
+                        break;
+                    }
+
+                    surface_score += 1;
+                }
             }
+
+            score += surface_score;
 
             if score > best_score {
                 best_score = score;

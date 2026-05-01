@@ -1,6 +1,6 @@
 use core::{
     mem,
-    ptr::{self, NonNull},
+    ptr::{self},
 };
 
 use windows_sys::Win32::{
@@ -9,7 +9,7 @@ use windows_sys::Win32::{
     UI::WindowsAndMessaging::*,
 };
 
-use crate::wallpaper::{WallpaperDriver, WallpaperTarget};
+use crate::wallpaper::WallpaperDriver;
 
 pub(crate) const WM_APP_TERMINATE: u32 = WM_APP + 1;
 
@@ -56,8 +56,14 @@ pub(crate) unsafe extern "system" fn window_proc(
     wparam: WPARAM,
     lparam: LPARAM,
 ) -> LRESULT {
-    let mut target =
-        unsafe { NonNull::new(GetWindowLongPtrA(hwnd, GWL_USERDATA) as *mut WallpaperTarget) };
+    let driver = unsafe { GetWindowLongPtrA(hwnd, GWL_USERDATA) as *mut WallpaperDriver };
+
+    #[cfg(debug_assertions)]
+    if driver.is_null() {
+        panic!("Wallpaper state is null")
+    }
+
+    let driver = unsafe { driver.as_mut().unwrap_unchecked() };
 
     match msg {
         WM_APP_TERMINATE => {
@@ -69,12 +75,10 @@ pub(crate) unsafe extern "system" fn window_proc(
             let _width = (lparam & 0xFFFF) as u32;
             let _height = (lparam >> 16) as u32;
 
-            if let Some(target) = target.as_mut() {
-                let target = unsafe { target.as_mut() };
-                let width = (lparam & 0xFFFF) as u32;
-                let height = (lparam >> 16) as u32;
-                target.resize(width, height);
-            }
+            let width = (lparam & 0xFFFF) as u32;
+            let height = (lparam >> 16) as u32;
+
+            driver.resize_target(hwnd, width, height);
 
             0
         }

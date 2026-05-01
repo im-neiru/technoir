@@ -1,26 +1,24 @@
 mod init;
 
-use wgpu::{Device, DeviceDescriptor, Instance, Queue, RequestDeviceError, Surface};
+use wgpu::{Device, DeviceDescriptor, Instance, Queue, RequestDeviceError};
 
 pub use init::PreferedDeviceKey;
 
 pub struct WallpaperRenderer {
-    instance: Instance,
-    surfaces: Vec<Surface<'static>>,
-
-    device: Device,
-    queue: Queue,
+    pub(in crate::wallpaper) instance: Instance,
+    pub(in crate::wallpaper) device: Device,
+    pub(in crate::wallpaper) queue: Queue,
 }
 
 impl WallpaperRenderer {
     pub(crate) async fn new(
         instance: &Instance,
         preferred: Option<PreferedDeviceKey>,
-        surfaces: Vec<Surface<'static>>,
+        screens: &mut [super::Screen],
     ) -> Result<Self, WallpaperRendererCreateError> {
         let instance = instance.clone();
 
-        let Some(adapter) = Self::select_adapter(&instance, preferred, &surfaces).await else {
+        let Some(adapter) = Self::select_adapter(&instance, preferred, screens).await else {
             return Err(WallpaperRendererCreateError::NoAdapterFound);
         };
 
@@ -35,9 +33,14 @@ impl WallpaperRenderer {
             })
             .await?;
 
+        for s in screens {
+            if let Some(target) = s.target.as_mut() {
+                target.configure(&device, &adapter);
+            }
+        }
+
         Ok(Self {
             instance,
-            surfaces,
             device,
             queue,
         })

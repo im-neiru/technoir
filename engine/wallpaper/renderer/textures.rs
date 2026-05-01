@@ -11,6 +11,7 @@ pub struct TextureIndex(usize);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum TextureKey {
     SystemWallpaper,
+    GrainNoise,
 }
 
 impl super::WallpaperRenderer {
@@ -44,16 +45,18 @@ impl super::WallpaperRenderer {
 
         let image = image::open(path_str).expect("Failed to open system wallpaper");
 
-        let image = image.to_rgb8();
+        let image = image.to_rgba8();
 
         let texture = self.create_texture_from_raw_bytes(
             "system_wallpaper",
             image.as_raw(),
             TextureFormat::Rgba8UnormSrgb,
             TextureUsages::TEXTURE_BINDING,
-            image.width(),
-            image.height(),
-            image.width() * 3,
+            TextureSize {
+                width: image.width(),
+                height: image.height(),
+            },
+            image.width() * 4,
         );
 
         let (index, _) = self
@@ -63,20 +66,50 @@ impl super::WallpaperRenderer {
         TextureIndex(index)
     }
 
-    #[allow(clippy::too_many_arguments)]
+    pub fn create_grain_noise_texture(&mut self) -> TextureIndex {
+        if let Some((index, _key, _texture)) = self.textures.get_full(&TextureKey::GrainNoise) {
+            return TextureIndex(index);
+        }
+
+        let width = 1024;
+        let height = 1024;
+
+        let mut bytes = vec![0u8; width as usize * height as usize];
+
+        for y in 0..height {
+            for x in 0..width {
+                let index = (y * width + x) as usize;
+
+                bytes[index] = rand::random();
+            }
+        }
+
+        let texture = self.create_texture_from_raw_bytes(
+            "grain_noise",
+            &bytes,
+            TextureFormat::R8Unorm,
+            TextureUsages::TEXTURE_BINDING,
+            TextureSize { width, height },
+            width,
+        );
+
+        let (index, _) = self.textures.insert_full(TextureKey::GrainNoise, texture);
+
+        TextureIndex(index)
+    }
+
     fn create_texture_from_raw_bytes(
         &mut self,
         name: &str,
         bytes: &[u8],
         format: TextureFormat,
         usage: TextureUsages,
-        width: u32,
-        height: u32,
+        size: TextureSize,
         bytes_per_row: u32,
     ) -> Texture {
         let extent = Extent3d {
-            width,
-            height,
+            width: size.width,
+            height: size.height,
             depth_or_array_layers: 1,
         };
 
@@ -97,11 +130,17 @@ impl super::WallpaperRenderer {
             TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(bytes_per_row),
-                rows_per_image: Some(height),
+                rows_per_image: Some(size.height),
             },
             extent,
         );
 
         texture
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct TextureSize {
+    pub width: u32,
+    pub height: u32,
 }

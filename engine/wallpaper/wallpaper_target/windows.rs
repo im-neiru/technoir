@@ -21,12 +21,12 @@ pub struct WallpaperTarget {
     hinstance: NonNull<c_void>,
     classname: [u16; 96],
 
-    pub(in crate::wallpaper) surface: Surface<'static>,
+    pub(in crate::wallpaper) wgpu_surface: Surface<'static>,
     pub(in crate::wallpaper) config: SurfaceConfiguration,
 }
 
 impl WallpaperTarget {
-    pub(super) async fn new(
+    pub(in crate::wallpaper) fn new(
         screen_name: &str,
         bounds: &ScreenBounds,
         hinstance: NonNull<c_void>,
@@ -112,20 +112,6 @@ impl WallpaperTarget {
 
             ShowWindow(hwnd.as_ptr(), SW_HIDE);
 
-            let surface = unsafe {
-                wgpu_instance
-                    .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
-                        raw_display_handle: Some(RawDisplayHandle::Windows(
-                            WindowsDisplayHandle::new(),
-                        )),
-
-                        raw_window_handle: RawWindowHandle::Win32(Win32WindowHandle::new(
-                            hwnd.addr().cast_signed(),
-                        )),
-                    })
-                    .expect("Failed to create surface")
-            };
-
             // Default should be replaced when the wgpu::Adapter is retrieved
             let config = wgpu::SurfaceConfiguration {
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -142,7 +128,7 @@ impl WallpaperTarget {
                 hwnd,
                 hinstance,
                 classname,
-                surface,
+                wgpu_surface,
                 config,
             }
         }
@@ -153,7 +139,7 @@ impl WallpaperTarget {
         device: &wgpu::Device,
         adapter: &wgpu::Adapter,
     ) {
-        let caps = self.surface.get_capabilities(adapter);
+        let caps = self.wgpu_surface.get_capabilities(adapter);
 
         let format = caps
             .formats
@@ -164,14 +150,14 @@ impl WallpaperTarget {
 
         self.config.format = format;
 
-        self.surface.configure(&device, &self.config);
+        self.wgpu_surface.configure(&device, &self.config);
     }
 
     #[inline]
     pub(crate) fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         self.config.width = width;
         self.config.height = height;
-        self.surface.configure(&device, &self.config);
+        self.wgpu_surface.configure(&device, &self.config);
     }
 
     fn build_classname(screen_name: &str) -> [u16; 96] {
@@ -199,6 +185,12 @@ impl WallpaperTarget {
         buf[i] = 0;
 
         buf
+    }
+
+    pub(in crate::wallpaper) fn show(&mut self) {
+        unsafe {
+            ShowWindow(self.hwnd.as_ptr(), SW_SHOW);
+        }
     }
 }
 

@@ -8,13 +8,13 @@ use raw_window_handle as rwh;
 use crate::wallpaper::WallpaperDriver;
 
 pub struct Entry {
-    driver: WallpaperDriver,
+    wallpaper_driver: WallpaperDriver,
     wgpu_instance: wgpu::Instance,
     hinstance: NonNull<c_void>,
 }
 
 impl Entry {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         let hinstance = unsafe {
             NonNull::new(windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(
                 ptr::null_mut(),
@@ -33,11 +33,17 @@ impl Entry {
             display: Some(Box::new(DisplayHandle)),
         });
 
+        let wallpaper_driver = WallpaperDriver::new(&wgpu_instance, hinstance).await;
+
         Self {
-            driver: WallpaperDriver::new(),
+            wallpaper_driver,
             wgpu_instance,
             hinstance,
         }
+    }
+
+    pub fn run(mut self) {
+        self.wallpaper_driver.run();
     }
 }
 

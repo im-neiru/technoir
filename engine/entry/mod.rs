@@ -1,5 +1,5 @@
 #[cfg(target_family = "windows")]
-mod windows;
+mod window;
 
 #[cfg(target_family = "windows")]
-pub(crate) use windows::WindowsDriver;
+pub use window::Entry;

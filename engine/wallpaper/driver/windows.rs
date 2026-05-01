@@ -1,12 +1,19 @@
 use core::{ffi::c_void, ptr::NonNull};
 
+use crate::wallpaper::Screen;
+
 pub struct WindowsDriver {
-    thread: Option<NonNull<c_void>>,
-    wgpu_instance: wgpu::Instance,
+    window: Option<NonNull<c_void>>,
+    screens: Vec<Screen>,
 }
 
-impl super::template::WallpaperDriver for WindowsDriver {
-    fn run(&mut self) {}
+impl WindowsDriver {
+    pub(crate) fn new() -> Self {
+        let screens = Screen::get_screens();
 
-    fn terminate(&mut self) {}
+        Self {
+            window: None,
+            screens,
+        }
+    }
 }

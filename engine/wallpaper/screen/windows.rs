@@ -17,11 +17,14 @@ use windows_sys::{
     core::BOOL,
 };
 
+use crate::wallpaper::WallpaperTarget;
+
 pub struct Screen {
     hmonitor: NonNull<c_void>,
     is_filled: bool,
     name: String,
     bounds: super::ScreenBounds,
+    pub(in crate::wallpaper) target: Option<WallpaperTarget>,
 }
 
 impl Screen {
@@ -110,6 +113,7 @@ unsafe extern "system" fn monitor_enum_proc(
                 height,
             },
             is_filled: false,
+            target: None,
         });
     }
 

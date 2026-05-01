@@ -3,12 +3,11 @@
     windows_subsystem = "windows"
 )]
 
-use engine::{Config, run};
+use engine::{Config, Entry};
 
 fn main() {
     let config = Config::load();
+    let entry = smol::block_on(async { Entry::new(config).await });
 
-    smol::block_on(async {
-        run(&config).await;
-    });
+    entry.run();
 }

@@ -5,6 +5,7 @@ edition = "2024"
 
 [lib]
 path = "lib.rs"
+crate-type = ["cdylib"]
 
 [dependencies]
 engine = { path = "../../engine" }

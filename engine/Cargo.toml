@@ -25,6 +25,7 @@ wgpu.workspace = true
 chrono = "0.4.44"
 
 ui.path = "../ui"
+wgsl-shaders = { path = "../wallpapers/wgsl" }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys.workspace = true

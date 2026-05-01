@@ -18,14 +18,16 @@ macro_rules! define_shaders {
                 }
             }
 
-            pub fn path(&self, backend: wgpu::Backend) -> String {
-                let ext = match backend {
-                    wgpu::Backend::Metal => "metal",
-                    wgpu::Backend::Vulkan => "spv",
-                    wgpu::Backend::Dx12 => "hlsl",
-                    _ => unreachable!("Unsupported backend: {:?}", backend),
-                };
-                format!("shaders/{}.{}", self.name(), ext)
+            pub fn descriptor<'a>(&self) -> wgpu::ShaderModuleDescriptor<'a> {
+                let path = format!("shaders/{}.naga", self.name());
+                let source = std::fs::File::open(&path).expect("Failed to open shader file");
+
+                let module: wgpu::naga::Module = ciborium::from_reader(source).expect("Failed to deserialize shader module");
+
+                wgpu::ShaderModuleDescriptor {
+                    label: Some(self.name()),
+                    source: wgpu::ShaderSource::Naga(std::borrow::Cow::Owned(module)),
+                }
             }
         }
 

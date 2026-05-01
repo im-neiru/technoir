@@ -8,14 +8,14 @@ use raw_window_handle as rwh;
 use crate::{manager::Manager, wallpaper::WallpaperDriver};
 
 pub struct Entry {
-    wgpu_instance: wgpu::Instance,
+    _wgpu_instance: wgpu::Instance,
     pub(crate) hinstance: NonNull<c_void>,
     pub(crate) wallpaper_driver: WallpaperDriver,
     pub(crate) manager: Manager,
 }
 
 impl Entry {
-    pub async fn new() -> Self {
+    pub async fn new(config: crate::Config) -> Self {
         let hinstance = unsafe {
             NonNull::new(windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(
                 ptr::null_mut(),
@@ -35,11 +35,11 @@ impl Entry {
         });
 
         let wallpaper_driver = WallpaperDriver::new(&wgpu_instance, hinstance).await;
-        let manager = Manager::new(hinstance, true);
+        let manager = Manager::new(hinstance, config.open_manager);
 
         Self {
             wallpaper_driver,
-            wgpu_instance,
+            _wgpu_instance: wgpu_instance,
             hinstance,
             manager,
         }

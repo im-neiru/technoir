@@ -5,10 +5,10 @@ use core::{
 
 use raw_window_handle as rwh;
 
-use crate::wallpaper::WindowsDriver;
+use crate::wallpaper::WallpaperDriver;
 
 pub struct Entry {
-    driver: WindowsDriver,
+    driver: WallpaperDriver,
     wgpu_instance: wgpu::Instance,
     hinstance: NonNull<c_void>,
 }
@@ -34,7 +34,7 @@ impl Entry {
         });
 
         Self {
-            driver: WindowsDriver::new(),
+            driver: WallpaperDriver::new(),
             wgpu_instance,
             hinstance,
         }

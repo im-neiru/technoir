@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use wgpu::{Device, DeviceDescriptor, Instance, Queue, RequestDeviceError};
 
 pub use init::PreferedDeviceKey;
-pub use textures::TextureIndex;
+pub use textures::{TextureIndex, TextureSize};
 
 pub struct WallpaperRenderer {
     pub(in crate::wallpaper) device: Device,

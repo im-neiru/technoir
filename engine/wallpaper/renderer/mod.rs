@@ -1,12 +1,16 @@
 mod init;
+mod textures;
 
+use indexmap::IndexMap;
 use wgpu::{Device, DeviceDescriptor, Instance, Queue, RequestDeviceError};
 
 pub use init::PreferedDeviceKey;
+pub use textures::TextureIndex;
 
 pub struct WallpaperRenderer {
     pub(in crate::wallpaper) device: Device,
     pub(in crate::wallpaper) queue: Queue,
+    textures: IndexMap<textures::TextureKey, wgpu::Texture>,
 }
 
 impl WallpaperRenderer {
@@ -38,7 +42,13 @@ impl WallpaperRenderer {
             }
         }
 
-        Ok(Self { device, queue })
+        let textures = IndexMap::new();
+
+        Ok(Self {
+            device,
+            queue,
+            textures,
+        })
     }
 }
 

@@ -573,6 +573,7 @@ dependencies = [
  "glam",
  "glyphon",
  "image",
+ "indexmap",
  "rand 0.10.1",
  "rapidhash",
  "raw-window-handle",

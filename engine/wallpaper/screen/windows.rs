@@ -68,6 +68,27 @@ impl Screen {
     pub(crate) fn is_filled(&self) -> bool {
         self.is_filled
     }
+
+    pub fn spawn_target(
+        &mut self,
+        hinstance: NonNull<c_void>,
+        parent: NonNull<c_void>,
+        wgpu_instance: &wgpu::Instance,
+    ) {
+        self.target = Some(WallpaperTarget::new(
+            &self.name,
+            &self.bounds,
+            hinstance,
+            parent,
+            wgpu_instance,
+        ));
+    }
+
+    pub fn show_target(&mut self) {
+        if let Some(target) = self.target.as_mut() {
+            target.show();
+        }
+    }
 }
 
 unsafe extern "system" fn monitor_enum_proc(

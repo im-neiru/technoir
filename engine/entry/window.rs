@@ -34,7 +34,7 @@ impl Entry {
             display: Some(Box::new(DisplayHandle)),
         });
 
-        let wallpaper_driver = WallpaperDriver::new(&wgpu_instance, hinstance).await;
+        let wallpaper_driver = WallpaperDriver::new(wgpu_instance.clone()).await;
         let manager = Manager::new(hinstance, config.open_manager);
 
         Self {

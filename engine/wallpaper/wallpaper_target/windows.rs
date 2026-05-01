@@ -14,7 +14,7 @@ use windows_sys::Win32::{
     UI::WindowsAndMessaging::*,
 };
 
-use crate::wallpaper::{ScreenBounds, event_loop::window_proc};
+use crate::wallpaper::{ScreenBounds, WallpaperDriver, event_loop::window_proc};
 
 pub struct WallpaperTarget {
     pub(in crate::wallpaper) hwnd: NonNull<c_void>,
@@ -150,14 +150,14 @@ impl WallpaperTarget {
 
         self.config.format = format;
 
-        self.wgpu_surface.configure(&device, &self.config);
+        self.wgpu_surface.configure(device, &self.config);
     }
 
     #[inline]
     pub(crate) fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         self.config.width = width;
         self.config.height = height;
-        self.wgpu_surface.configure(&device, &self.config);
+        self.wgpu_surface.configure(device, &self.config);
     }
 
     fn build_classname(screen_name: &str) -> [u16; 96] {
@@ -187,8 +187,14 @@ impl WallpaperTarget {
         buf
     }
 
-    pub(in crate::wallpaper) fn show(&mut self) {
+    pub(in crate::wallpaper) fn show(&mut self, driver: NonNull<WallpaperDriver>) {
         unsafe {
+            SetWindowLongPtrA(
+                self.hwnd.as_ptr(),
+                GWL_USERDATA,
+                driver.addr().get().cast_signed(),
+            );
+
             ShowWindow(self.hwnd.as_ptr(), SW_SHOW);
         }
     }

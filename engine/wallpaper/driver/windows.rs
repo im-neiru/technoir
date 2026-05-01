@@ -5,12 +5,15 @@ use core::{
 
 use windows_sys::Win32::{
     Foundation::{CloseHandle, HANDLE, HWND},
-    System::Threading::{CreateThread, INFINITE, WaitForSingleObject},
+    System::{
+        LibraryLoader::GetModuleHandleA,
+        Threading::{CreateThread, INFINITE, WaitForSingleObject},
+    },
     UI::WindowsAndMessaging::PostMessageW,
 };
 
 use crate::{
-    utils::get_desktop_handles,
+    utils::{DesktopWatcher, get_desktop_handles},
     wallpaper::{
         Screen,
         event_loop::{WM_APP_TERMINATE, enter_loop},
@@ -19,45 +22,42 @@ use crate::{
 };
 
 pub struct WallpaperDriver {
-    screens: Vec<Screen>,
-    renderer: WallpaperRenderer,
+    pub(in crate::wallpaper) screens: Vec<Screen>,
+    instance: wgpu::Instance,
+    renderer: Option<WallpaperRenderer>,
+    watcher: Option<DesktopWatcher>,
     worker: HANDLE,
 }
 
 impl WallpaperDriver {
-    pub(crate) async fn new(wgpu_instance: &wgpu::Instance, hinstance: NonNull<c_void>) -> Self {
-        let mut screens = Screen::get_screens();
-
-        let renderer = WallpaperRenderer::new(wgpu_instance, None, screens.as_mut_slice())
-            .await
-            .unwrap();
-
-        let desktop_handles = get_desktop_handles();
-        let parent = desktop_handles.get_target_parent();
-
-        for s in screens.iter_mut() {
-            s.spawn_target(hinstance, parent, wgpu_instance);
-        }
+    pub(crate) async fn new(instance: wgpu::Instance) -> Self {
+        let screens = Screen::get_screens();
 
         Self {
             screens,
-            renderer,
+            instance,
+            renderer: None,
             worker: ptr::null_mut(),
+            watcher: None,
         }
     }
 
     pub(in crate::wallpaper) fn resize_target(&mut self, hwnd: HWND, width: u32, height: u32) {
+        let Some(renderer) = self.renderer.as_ref() else {
+            return;
+        };
+
         for s in self.screens.iter_mut() {
             if let Some(target) = s.target.as_mut()
                 && target.hwnd.as_ptr() == hwnd
             {
-                target.resize(&self.renderer.device, width, height);
+                target.resize(&renderer.device, width, height);
             }
         }
     }
 
     pub fn run(&mut self) {
-        if self.worker.is_null() {
+        if !self.worker.is_null() {
             return;
         };
 
@@ -81,6 +81,26 @@ impl WallpaperDriver {
 
     #[inline(always)]
     fn run_internal(&mut self) {
+        let hinstance = unsafe {
+            NonNull::new(GetModuleHandleA(ptr::null_mut())).expect("Failed to retrieve hinstance")
+        };
+
+        self.watcher = Some(DesktopWatcher::new().expect("Failed to create desktop watcher"));
+
+        let renderer = smol::block_on(async {
+            WallpaperRenderer::new(&self.instance, None, self.screens.as_mut_slice()).await
+        })
+        .unwrap();
+
+        self.renderer = Some(renderer);
+
+        let desktop_handles = get_desktop_handles();
+        let parent = desktop_handles.get_target_parent();
+
+        for s in self.screens.iter_mut() {
+            s.spawn_target(hinstance, parent, &self.instance);
+        }
+
         unsafe { enter_loop(self) }
     }
 
@@ -107,6 +127,29 @@ impl WallpaperDriver {
         };
 
         self.worker = ptr::null_mut();
+    }
+
+    #[inline]
+    pub fn poll_desktop_state(&mut self) {
+        let Some(watcher) = self.watcher.as_ref() else {
+            return;
+        };
+
+        let Some(entry) = watcher.poll() else {
+            return;
+        };
+
+        for s in self.screens.iter_mut() {
+            if s.hmonitor == entry.monitor_handle() {
+                println!(
+                    "{:x} {:x} {}",
+                    s.hmonitor.addr(),
+                    entry.window_handle().addr(),
+                    entry.is_full()
+                );
+                s.is_filled = entry.is_full()
+            }
+        }
     }
 }
 

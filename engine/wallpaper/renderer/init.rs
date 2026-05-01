@@ -3,7 +3,7 @@ use wgpu::{Adapter, Backend, Backends};
 use crate::wallpaper::Screen;
 
 impl super::WallpaperRenderer {
-    pub(super) async fn select_adapter<'s>(
+    pub(super) async fn select_adapter(
         instance: &wgpu::Instance,
         preferred: Option<PreferedDeviceKey>,
         screens: &[Screen],

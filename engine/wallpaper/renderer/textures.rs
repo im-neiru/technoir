@@ -102,6 +102,12 @@ impl<'r> super::PrepareContext<'r> {
     }
 }
 
+impl<'r> super::CleanupContext<'r> {
+    pub fn release_texture(&mut self, index: TextureIndex) {
+        self.inner.textures.release_by_index(index.0);
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn create_texture_from_raw_bytes(
     device: &wgpu::Device,

@@ -22,6 +22,9 @@ pub struct Screen {
 
     name: String,
     bounds: super::ScreenBounds,
+
+    pub(crate) provider: Option<Box<dyn crate::wallpaper::WallpaperProvider>>,
+    pub(crate) library_index: Option<usize>,
 }
 
 impl Screen {
@@ -126,6 +129,8 @@ unsafe extern "system" fn monitor_enum_proc(
             },
             is_filled: false,
             target: None,
+            provider: None,
+            library_index: None,
         });
     }
 

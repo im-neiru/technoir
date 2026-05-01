@@ -612,6 +612,7 @@ dependencies = [
  "glyphon",
  "image",
  "indexmap",
+ "libloading",
  "rand 0.10.1",
  "rapidhash",
  "raw-window-handle",

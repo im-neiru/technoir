@@ -20,6 +20,10 @@ pub struct PrepareContext<'r> {
     inner: &'r mut WallpaperRenderer,
 }
 
+pub struct CleanupContext<'r> {
+    inner: &'r mut WallpaperRenderer,
+}
+
 impl WallpaperRenderer {
     pub(crate) async fn new(
         instance: &Instance,

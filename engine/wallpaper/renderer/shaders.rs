@@ -33,6 +33,12 @@ impl<'r> super::PrepareContext<'r> {
     }
 }
 
+impl<'r> super::CleanupContext<'r> {
+    pub fn release_shader(&mut self, index: ShaderIndex) {
+        self.inner.shaders.release_by_index(index.0);
+    }
+}
+
 impl From<usize> for ShaderIndex {
     #[inline]
     fn from(value: usize) -> Self {

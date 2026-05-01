@@ -13,7 +13,7 @@ pub struct WallpaperRenderer {
 }
 
 impl WallpaperRenderer {
-    pub async fn new(
+    pub(crate) async fn new(
         instance: &Instance,
         preferred: Option<PreferedDeviceKey>,
         surfaces: Vec<Surface<'static>>,

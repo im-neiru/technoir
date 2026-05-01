@@ -5,7 +5,6 @@ use wgpu::{Device, DeviceDescriptor, Instance, Queue, RequestDeviceError};
 pub use init::PreferedDeviceKey;
 
 pub struct WallpaperRenderer {
-    pub(in crate::wallpaper) instance: Instance,
     pub(in crate::wallpaper) device: Device,
     pub(in crate::wallpaper) queue: Queue,
 }
@@ -39,11 +38,7 @@ impl WallpaperRenderer {
             }
         }
 
-        Ok(Self {
-            instance,
-            device,
-            queue,
-        })
+        Ok(Self { device, queue })
     }
 }
 

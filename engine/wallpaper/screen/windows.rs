@@ -1,7 +1,6 @@
 use core::{
     ffi::c_void,
     mem,
-    num::NonZeroUsize,
     ptr::{self, NonNull},
 };
 
@@ -10,9 +9,6 @@ use windows_sys::{
         Devices::Display::*,
         Foundation::{RECT, TRUE},
         Graphics::Gdi::*,
-        UI::WindowsAndMessaging::{
-            GWL_USERDATA, PostMessageW, SW_SHOW, SetWindowLongPtrA, ShowWindow,
-        },
     },
     core::BOOL,
 };
@@ -20,11 +16,12 @@ use windows_sys::{
 use crate::wallpaper::WallpaperTarget;
 
 pub struct Screen {
-    hmonitor: NonNull<c_void>,
-    is_filled: bool,
+    pub(in crate::wallpaper) hmonitor: NonNull<c_void>,
+    pub(in crate::wallpaper) is_filled: bool,
+    pub(in crate::wallpaper) target: Option<WallpaperTarget>,
+
     name: String,
     bounds: super::ScreenBounds,
-    pub(in crate::wallpaper) target: Option<WallpaperTarget>,
 }
 
 impl Screen {
@@ -82,12 +79,6 @@ impl Screen {
             parent,
             wgpu_instance,
         ));
-    }
-
-    pub fn show_target(&mut self) {
-        if let Some(target) = self.target.as_mut() {
-            target.show();
-        }
     }
 }
 

@@ -14,128 +14,140 @@ pub(crate) enum TextureKey {
     GrainNoise,
 }
 
-impl super::WallpaperRenderer {
+impl<'r> super::PrepareContext<'r> {
     pub fn get_texture(&self, index: TextureIndex) -> Option<&wgpu::Texture> {
-        let (_, texture) = self.textures.get_index(index.0)?;
-
-        Some(texture)
+        self.inner.textures.get_by_index(index.0)
     }
 
     #[cfg(target_os = "windows")]
-    pub fn load_system_wallpaper_as_texture(&mut self) -> TextureIndex {
-        if let Some((index, _key, _texture)) = self.textures.get_full(&TextureKey::SystemWallpaper)
-        {
-            return TextureIndex(index);
-        }
+    pub fn load_system_wallpaper_as_texture(&mut self) -> (TextureIndex, &Texture) {
+        let device = &self.inner.device;
+        let queue = &self.inner.queue;
 
-        const CAPACITY: usize = 300;
-
-        let mut path: Vec<u16> = Vec::with_capacity(CAPACITY);
-
-        unsafe {
-            SystemParametersInfoW(
-                SPI_GETDESKWALLPAPER,
-                CAPACITY as u32,
-                path.as_mut_ptr() as _,
-                0,
-            );
-        }
-
-        let path_str = String::from_utf16_lossy(&path);
-
-        let image = image::open(path_str).expect("Failed to open system wallpaper");
-
-        let image = image.to_rgba8();
-
-        let texture = self.create_texture_from_raw_bytes(
-            "system_wallpaper",
-            image.as_raw(),
-            TextureFormat::Rgba8UnormSrgb,
-            TextureUsages::TEXTURE_BINDING,
-            TextureSize {
-                width: image.width(),
-                height: image.height(),
-            },
-            image.width() * 4,
-        );
-
-        let (index, _) = self
+        self.inner
             .textures
-            .insert_full(TextureKey::SystemWallpaper, texture);
+            .get_or_insert(TextureKey::SystemWallpaper, || {
+                const CAPACITY: usize = 300;
+                let mut path = [0u16; CAPACITY];
 
-        TextureIndex(index)
+                unsafe {
+                    SystemParametersInfoW(
+                        SPI_GETDESKWALLPAPER,
+                        CAPACITY as u32,
+                        path.as_mut_ptr() as _,
+                        0,
+                    );
+                }
+
+                let len = path.iter().position(|&c| c == 0).unwrap_or(CAPACITY);
+                let path_str = String::from_utf16_lossy(&path[..len]);
+
+                let image = image::open(path_str).expect("Failed to open system wallpaper");
+
+                let image = image.to_rgba8();
+
+                let texture = create_texture_from_raw_bytes(
+                    device,
+                    queue,
+                    "system_wallpaper",
+                    image.as_raw(),
+                    TextureFormat::Rgba8UnormSrgb,
+                    TextureUsages::TEXTURE_BINDING,
+                    TextureSize {
+                        width: image.width(),
+                        height: image.height(),
+                    },
+                    image.width() * 4,
+                );
+
+                Ok::<_, std::convert::Infallible>(texture)
+            })
+            .expect("Texture creation is infallible")
     }
 
-    pub fn create_grain_noise_texture(&mut self) -> TextureIndex {
-        if let Some((index, _key, _texture)) = self.textures.get_full(&TextureKey::GrainNoise) {
-            return TextureIndex(index);
-        }
+    pub fn create_grain_noise_texture(&mut self) -> (TextureIndex, &Texture) {
+        let device = &self.inner.device;
+        let queue = &self.inner.queue;
 
-        let width = 1024;
-        let height = 1024;
+        self.inner
+            .textures
+            .get_or_insert(TextureKey::GrainNoise, || {
+                let width = 1024;
+                let height = 1024;
 
-        let mut bytes = vec![0u8; width as usize * height as usize];
+                let mut bytes = vec![0u8; width as usize * height as usize];
 
-        for y in 0..height {
-            for x in 0..width {
-                let index = (y * width + x) as usize;
+                for y in 0..height {
+                    for x in 0..width {
+                        let index = (y * width + x) as usize;
 
-                bytes[index] = rand::random();
-            }
-        }
+                        bytes[index] = rand::random();
+                    }
+                }
 
-        let texture = self.create_texture_from_raw_bytes(
-            "grain_noise",
-            &bytes,
-            TextureFormat::R8Unorm,
-            TextureUsages::TEXTURE_BINDING,
-            TextureSize { width, height },
-            width,
-        );
+                let texture = create_texture_from_raw_bytes(
+                    device,
+                    queue,
+                    "grain_noise",
+                    &bytes,
+                    TextureFormat::R8Unorm,
+                    TextureUsages::TEXTURE_BINDING,
+                    TextureSize { width, height },
+                    width,
+                );
 
-        let (index, _) = self.textures.insert_full(TextureKey::GrainNoise, texture);
-
-        TextureIndex(index)
+                Ok::<_, std::convert::Infallible>(texture)
+            })
+            .expect("Texture creation is infallible")
     }
+}
 
-    fn create_texture_from_raw_bytes(
-        &mut self,
-        name: &str,
-        bytes: &[u8],
-        format: TextureFormat,
-        usage: TextureUsages,
-        size: TextureSize,
-        bytes_per_row: u32,
-    ) -> Texture {
-        let extent = Extent3d {
-            width: size.width,
-            height: size.height,
-            depth_or_array_layers: 1,
-        };
+#[allow(clippy::too_many_arguments)]
+fn create_texture_from_raw_bytes(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    name: &str,
+    bytes: &[u8],
+    format: TextureFormat,
+    usage: TextureUsages,
+    size: TextureSize,
+    bytes_per_row: u32,
+) -> Texture {
+    let extent = Extent3d {
+        width: size.width,
+        height: size.height,
+        depth_or_array_layers: 1,
+    };
 
-        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
-            label: Some(name),
-            size: extent,
-            format,
-            usage: usage | TextureUsages::COPY_DST,
-            view_formats: &[],
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-        });
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some(name),
+        size: extent,
+        format,
+        usage: usage | TextureUsages::COPY_DST,
+        view_formats: &[],
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: TextureDimension::D2,
+    });
 
-        self.queue.write_texture(
-            texture.as_image_copy(),
-            bytes,
-            TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(bytes_per_row),
-                rows_per_image: Some(size.height),
-            },
-            extent,
-        );
+    queue.write_texture(
+        texture.as_image_copy(),
+        bytes,
+        TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(bytes_per_row),
+            rows_per_image: Some(size.height),
+        },
+        extent,
+    );
 
-        texture
+    texture
+}
+
+impl From<usize> for TextureIndex {
+    #[inline]
+    fn from(value: usize) -> Self {
+        Self(value)
     }
 }
 

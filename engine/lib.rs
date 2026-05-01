@@ -7,7 +7,8 @@ mod manager;
 mod renderers;
 mod samplers;
 mod utils;
-mod wallpaper;
+
+pub mod wallpaper;
 
 pub use config::Config;
 pub use entry::Entry;

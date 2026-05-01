@@ -1,18 +1,23 @@
 mod init;
+mod registry;
 mod shaders;
 mod textures;
 
-use indexmap::IndexMap;
 use wgpu::{Device, DeviceDescriptor, Instance, Queue, RequestDeviceError};
 
 pub use init::PreferedDeviceKey;
+pub use shaders::{ShaderIndex, ShaderSource};
 pub use textures::{TextureIndex, TextureSize};
 
 pub struct WallpaperRenderer {
     pub(in crate::wallpaper) device: Device,
     pub(in crate::wallpaper) queue: Queue,
-    textures: IndexMap<textures::TextureKey, wgpu::Texture>,
-    shaders: IndexMap<shaders::ShaderKey, wgpu::ShaderModule>,
+    textures: registry::Registry<textures::TextureKey, TextureIndex, wgpu::Texture>,
+    shaders: registry::Registry<shaders::ShaderKey, ShaderIndex, wgpu::ShaderModule>,
+}
+
+pub struct PrepareContext<'r> {
+    inner: &'r mut WallpaperRenderer,
 }
 
 impl WallpaperRenderer {
@@ -44,14 +49,11 @@ impl WallpaperRenderer {
             }
         }
 
-        let textures = IndexMap::new();
-        let shaders = IndexMap::new();
-
         Ok(Self {
             device,
             queue,
-            textures,
-            shaders,
+            textures: registry::Registry::new(),
+            shaders: registry::Registry::new(),
         })
     }
 }

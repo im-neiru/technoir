@@ -15,7 +15,7 @@ use windows_sys::Win32::{
 use crate::{
     utils::{DesktopWatcher, get_desktop_handles},
     wallpaper::{
-        Screen,
+        Screen, WallpaperProvider,
         event_loop::{WM_APP_TERMINATE, enter_loop},
         renderer::WallpaperRenderer,
     },

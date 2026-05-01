@@ -2,4 +2,4 @@
 mod windows;
 
 #[cfg(target_family = "windows")]
-pub(crate) use windows::WindowsDriver;
+pub(crate) use windows::WallpaperDriver;

@@ -2,12 +2,12 @@ use core::{ffi::c_void, ptr::NonNull};
 
 use crate::wallpaper::Screen;
 
-pub struct WindowsDriver {
+pub struct WallpaperDriver {
     window: Option<NonNull<c_void>>,
     screens: Vec<Screen>,
 }
 
-impl WindowsDriver {
+impl WallpaperDriver {
     pub(crate) fn new() -> Self {
         let screens = Screen::get_screens();
 

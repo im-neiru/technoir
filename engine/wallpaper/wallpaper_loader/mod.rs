@@ -1,3 +1,5 @@
+mod library_file;
+
 use super::{CleanupContext, PrepareContext, Screen, WallpaperProvider};
 use indexmap::IndexMap;
 use libloading::{Library, Symbol};

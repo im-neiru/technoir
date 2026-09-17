@@ -1,6 +1,7 @@
 use core::{
     ffi::c_void,
     mem,
+    num::NonZeroU16,
     ptr::{self, NonNull},
 };
 
@@ -13,32 +14,33 @@ use windows_sys::Win32::{
     UI::WindowsAndMessaging::*,
 };
 
-use crate::ScreenBounds;
+use crate::{
+    graphics::{Context, WindowSurface},
+    wallpaper::{ScreenBounds, WallpaperDriver, event_loop::window_proc},
+};
 
-pub struct WallpaperTarget {
-    pub(super) hwnd: NonNull<c_void>,
+pub(in crate::wallpaper) struct WallpaperTarget {
+    pub(in crate::wallpaper) hwnd: NonNull<c_void>,
     hinstance: NonNull<c_void>,
     classname: [u16; 96],
 
-    pub(super) target: WallpaperSurface,
-
-    pub(super) visualizer: crate::Visualizer,
+    pub(in crate::wallpaper) surface: WindowSurface,
 }
 
 impl WallpaperTarget {
-    pub(super) async fn new(
+    pub(in crate::wallpaper) async fn new(
         screen_name: &str,
         bounds: &ScreenBounds,
         hinstance: NonNull<c_void>,
         parent: NonNull<c_void>,
-        wgpu_instance: &wgpu::Instance,
+        context: &Context,
     ) -> Self {
         unsafe {
             let classname = Self::build_classname(screen_name);
 
             let wnd_class = WNDCLASSW {
                 style: CS_HREDRAW | CS_VREDRAW,
-                lpfnWndProc: Some(super::event_loop::window_proc),
+                lpfnWndProc: Some(window_proc),
                 cbClsExtra: 0,
                 cbWndExtra: 0,
                 hInstance: hinstance.as_ptr(),
@@ -88,27 +90,29 @@ impl WallpaperTarget {
                 SWP_SHOWWINDOW | SWP_NOACTIVATE,
             );
 
-            let wgpu_surface = wgpu_instance
-                .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
-                    raw_display_handle: Some(
-                        RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
-                    ),
-
-                    raw_window_handle: RawWindowHandle::Win32(Win32WindowHandle::new(
-                        hwnd.addr().cast_signed(),
-                    )),
-                })
-                .expect("Failed to create wgpu::Surface");
-
             let (width, height) = {
                 let mut rect = mem::zeroed();
 
                 GetClientRect(hwnd.as_ptr() as _, &mut rect);
+
                 (
-                    (rect.right - rect.left).max(1) as u32,
-                    (rect.bottom - rect.top).max(1) as u32,
+                    NonZeroU16::new_unchecked((rect.right - rect.left).max(1) as u16),
+                    NonZeroU16::new_unchecked((rect.bottom - rect.top).max(1) as u16),
                 )
             };
+
+            let target = wgpu::SurfaceTargetUnsafe::RawHandle {
+                raw_display_handle: Some(RawDisplayHandle::Windows(WindowsDisplayHandle::new())),
+                raw_window_handle: RawWindowHandle::Win32({
+                    let mut h = Win32WindowHandle::new(hwnd.addr().cast_signed());
+
+                    h.hinstance = Some(hinstance.addr().cast_signed());
+
+                    h
+                }),
+            };
+
+            let surface = context.create_window_surface(target, width, height);
 
             ShowWindow(hwnd.as_ptr(), SW_HIDE);
 
@@ -116,15 +120,25 @@ impl WallpaperTarget {
                 hwnd,
                 hinstance,
                 classname,
-                visualizer: crate::Visualizer::new(wgpu_instance, wgpu_surface, width, height)
-                    .await,
+                surface,
             }
         }
     }
 
     #[inline]
-    pub(crate) fn resize(&mut self, width: u32, height: u32) {
-        self.visualizer.resize(width, height);
+    pub(in crate::wallpaper) fn resize(&mut self, context: &Context) {
+        let (width, height) = unsafe {
+            let mut rect = mem::zeroed();
+
+            GetClientRect(self.hwnd.as_ptr() as _, &mut rect);
+
+            (
+                NonZeroU16::new_unchecked((rect.right - rect.left).max(1) as u16),
+                NonZeroU16::new_unchecked((rect.bottom - rect.top).max(1) as u16),
+            )
+        };
+
+        self.surface.resize(context, width, height);
     }
 
     fn build_classname(screen_name: &str) -> [u16; 96] {
@@ -152,6 +166,18 @@ impl WallpaperTarget {
         buf[i] = 0;
 
         buf
+    }
+
+    pub(in crate::wallpaper) fn show(&mut self, driver: NonNull<WallpaperDriver>) {
+        unsafe {
+            SetWindowLongPtrA(
+                self.hwnd.as_ptr(),
+                GWL_USERDATA,
+                driver.addr().get().cast_signed(),
+            );
+
+            ShowWindow(self.hwnd.as_ptr(), SW_SHOW);
+        }
     }
 }
 

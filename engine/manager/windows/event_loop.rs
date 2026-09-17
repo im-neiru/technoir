@@ -3,15 +3,11 @@ use core::{
     ptr::{self, NonNull},
 };
 
-use crate::windows::{
-    messages::{WM_APP_TERMINATE, WM_USER_TRAY},
-    state::State,
-};
 use windows_sys::Win32::{Foundation::*, Graphics::Gdi::*, UI::WindowsAndMessaging::*};
 
-pub(crate) fn enter_loop(mut state: State) {
+pub(crate) fn enter_loop(mut state: crate::Entry) {
     unsafe {
-        let state_ptr = NonNull::new_unchecked((&mut state) as *mut State);
+        let state_ptr = NonNull::new_unchecked((&mut state) as *mut crate::Entry);
         state_ptr.as_ref().manager.store_state(state_ptr);
     };
 
@@ -25,6 +21,9 @@ pub(crate) fn enter_loop(mut state: State) {
     }
 }
 
+pub(super) const WM_APP_TERMINATE: u32 = WM_APP + 1;
+pub(super) const WM_USER_TRAY: u32 = WM_USER + 1;
+
 #[allow(unsafe_op_in_unsafe_fn)]
 pub(super) unsafe extern "system" fn window_proc(
     hwnd: HWND,
@@ -32,7 +31,7 @@ pub(super) unsafe extern "system" fn window_proc(
     wparam: WPARAM,
     lparam: LPARAM,
 ) -> LRESULT {
-    let state = NonNull::<State>::new(GetWindowLongPtrW(hwnd, GWLP_USERDATA) as _);
+    let state = NonNull::<crate::Entry>::new(GetWindowLongPtrW(hwnd, GWLP_USERDATA) as _);
 
     match msg {
         WM_USER_TRAY => {
@@ -56,7 +55,7 @@ pub(super) unsafe extern "system" fn window_proc(
             if let Some(mut state_ptr) = state {
                 let state = state_ptr.as_mut();
 
-                state.driver.terminate();
+                state.wallpaper_driver.terminate();
             }
 
             0
@@ -88,10 +87,8 @@ pub(super) unsafe extern "system" fn window_proc(
         WM_SIZE => {
             if let Some(mut state_ptr) = state {
                 let state = state_ptr.as_mut();
-                let width = (lparam & 0xFFFF) as u32;
-                let height = (lparam >> 16) as u32;
 
-                state.manager.resize(width, height);
+                state.manager.resize();
 
                 0
             } else {

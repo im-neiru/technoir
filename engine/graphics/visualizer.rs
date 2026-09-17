@@ -3,15 +3,14 @@ use chrono::Duration;
 use glam::*;
 
 use glyphon::{
-    Attrs, Color, FontSystem, Metrics, Resolution, SwashCache, TextArea, TextAtlas, TextBounds,
-    TextRenderer, Viewport,
+    Attrs, Color, FontSystem, SwashCache, TextArea, TextAtlas, TextBounds, TextRenderer, Viewport,
 };
 
 use super::Renderer;
 use crate::samplers::SpectrumAudioLoopback;
 
 pub struct Visualizer {
-    renderer: Renderer,
+    pub(crate) renderer: Renderer,
 
     prev_spectrum_l: [f32; SAMPLE_COUNT],
     prev_spectrum_r: [f32; SAMPLE_COUNT],
@@ -22,7 +21,7 @@ pub struct Visualizer {
     noise_texture: wgpu::Texture,
     noise_sampler: wgpu::Sampler,
 
-    texture_size: Vec2,
+    bg_size: super::TextureSize,
     u_ephemerals: wgpu::Buffer,
     u_scaling: wgpu::Buffer,
 
@@ -215,9 +214,21 @@ impl Visualizer {
             cache: None,
         });
 
-        let (bg_texture, texture_size) =
-            Self::load_bg_texture("./sample/image.jpg", device, &renderer.queue)
-                .expect("Failed to load background");
+        let bg_size = super::TextureSize {
+            width: renderer.config.width,
+            height: renderer.config.height,
+        };
+
+        let bg_texture = renderer
+            .load_texture_from_image_file(
+                "background_texture",
+                "./sample/image.jpg",
+                false,
+                true,
+                Some(bg_size),
+            )
+            .await
+            .expect("Failed to load background texture");
 
         let noise_texture = Self::load_noise_texture(device, &renderer.queue).unwrap();
 
@@ -314,14 +325,13 @@ impl Visualizer {
         let human_time = now.format("%A\n%I:%M:%S %p").to_string();
 
         text_buf.set_text(
-            &mut font_system,
             &human_time,
             &Attrs::new().family(glyphon::Family::Name("Zen Dots")),
             glyphon::Shaping::Advanced,
             Some(glyphon::cosmic_text::Align::Center),
         );
 
-        text_buf.set_size(&mut font_system, Some(1024.0), Some(1024.0));
+        text_buf.set_size(Some(1024.0), Some(1024.0));
         text_buf.shape_until_scroll(&mut font_system, false);
 
         let text_height = text_buf.layout_runs().count() as f32 * text_buf.metrics().line_height;
@@ -363,7 +373,7 @@ impl Visualizer {
             prev_lum: 0.,
             noise_texture,
             noise_sampler,
-            texture_size,
+            bg_size,
             text_renderer,
             tex_viewport,
             atlas,
@@ -377,48 +387,6 @@ impl Visualizer {
 
         result.resize(width, height);
         result
-    }
-
-    fn load_bg_texture(
-        path: impl AsRef<std::path::Path>,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-    ) -> Option<(wgpu::Texture, Vec2)> {
-        let img = image::open(path).ok()?.to_rgba8();
-        let (width, height) = img.dimensions();
-        let raw = img.into_raw();
-
-        let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Background Texture"),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
-
-        queue.write_texture(
-            texture.as_image_copy(),
-            &raw,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * width),
-                rows_per_image: Some(height),
-            },
-            wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-        );
-
-        Some((texture, vec2(width as f32, height as f32)))
     }
 
     fn load_noise_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> Option<wgpu::Texture> {
@@ -476,7 +444,7 @@ impl Visualizer {
         self.prev_spectrum_r = [0.0; SAMPLE_COUNT];
 
         let scaling = Scaling {
-            bg_scaling: self.renderer.scale_texture(self.texture_size),
+            bg_scaling: self.renderer.scale_texture(self.bg_size),
             aspect_ratio: self.renderer.get_aspect_ratio(),
             _padding: 0.,
         };
@@ -522,7 +490,6 @@ impl Visualizer {
 
             // 4. Set Rich Text with the new middle line
             text_buf.set_rich_text(
-                &mut self.font_system,
                 [
                     (day_string.as_str(), day_attrs),
                     (date_string.as_str(), date_attrs),
@@ -534,7 +501,7 @@ impl Visualizer {
             );
 
             // 5. Setup Layout & Alignment
-            text_buf.set_size(&mut self.font_system, Some(1024.0), Some(1024.0));
+            text_buf.set_size(Some(1024.0), Some(1024.0));
 
             for line in text_buf.lines.iter_mut() {
                 line.set_align(Some(glyphon::cosmic_text::Align::Center));
@@ -637,17 +604,17 @@ impl Visualizer {
             swirl_factor: SWIRL_STRENGTH * ((time * SWIRL_SPEED).sin() * 0.3 + 1.0) * 0.8,
             time,
             _padding: 0.,
-            spectrum: [[0.0; 4]; 16],
+            spectrum: [Vec2::ZERO; 64],
         };
 
-        let count = left.len().min(right.len()).min(16);
+        let count = left.len().min(right.len()).min(32);
 
         for i in 0..count {
             let l = left[i];
             let r = right[i];
             let mono = (l + r) * 0.80 - 0.05;
 
-            empherals.spectrum[i] = [mono, mono, mono, mono];
+            empherals.spectrum[i] = vec2(mono, mono);
         }
 
         self.renderer
@@ -683,7 +650,7 @@ impl Visualizer {
 
         self.renderer.queue.submit(Some(encoder.finish()));
 
-        frame.present();
+        self.renderer.queue.present(frame);
     }
 }
 
@@ -694,7 +661,7 @@ struct Ephemerals {
     time: f32,
     swirl_factor: f32,
     _padding: f32,
-    spectrum: [[f32; 4]; 16],
+    spectrum: [Vec2; 64],
 }
 
 #[repr(C, align(16))]

@@ -101,12 +101,6 @@ impl WallpaperDriver {
 
         for s in self.screens.iter_mut() {
             if s.hmonitor.addr() == entry.monitor_handle().addr().get() {
-                println!(
-                    "{:x} {:x} {}",
-                    s.hmonitor.addr(),
-                    entry.window_handle().addr(),
-                    entry.is_full()
-                );
                 s.is_filled = entry.is_full()
             }
         }

@@ -4,7 +4,7 @@ use mlua::prelude::*;
 use smol::fs;
 use zip::{CompressionMethod, ZipWriter, write::SimpleFileOptions};
 
-use super::{manifest::PluginManifest, pipelines::Pipelines};
+use super::{manifest::PluginManifest, pipelines::Pipelines, wgsl_minifier::minify_wgsl};
 
 pub struct Packager {
     compiler: LuaCompiler,
@@ -58,6 +58,8 @@ impl Packager {
             let wgsl = fs::read_to_string(shader_dir.join(info.shader.as_str()))
                 .await
                 .unwrap();
+
+            let wgsl = minify_wgsl(&wgsl).unwrap();
 
             let index = shaders_list.len();
             shaders_list.push(wgsl.into_boxed_str());

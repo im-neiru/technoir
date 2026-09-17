@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Technoir Plugin Manifest Schema",
+  "type": "object",
+  "required": [
+    "plugin"
+  ],
+  "properties": {
+    "plugin": {
+      "type": "object",
+      "required": [
+        "name",
+        "version",
+        "api_version",
+        "type",
+        "entry_point"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Human-readable name of the plugin."
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "SemVer string (e.g., 1.0.0)."
+        },
+        "api_version": {
+          "type": "string",
+          "description": "Technoir engine API version this plugin targets."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "wallpaper"
+          ],
+          "description": "Plugin category type."
+        },
+        "entry_point": {
+          "type": "string",
+          "description": "Path to the main Luau script relative to the plugin root."
+        },
+        "description": {
+          "type": "string",
+          "description": "Short summary of what the plugin does."
+        },
+        "author": {
+          "type": "string",
+          "description": "Author name or email."
+        },
+        "license": {
+          "type": "string",
+          "description": "SPDX identifier (e.g. MIT, Apache-2.0)."
+        },
+        "pipelines": {
+          "type": "string",
+          "default": "pipelines.toml",
+          "description": "Path to the pipeline configuration file."
+        },
+        "icon": {
+          "type": "string",
+          "description": "Path to a preview thumbnail image."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags for search and filtering."
+        }
+      }
+    }
+  }
+}

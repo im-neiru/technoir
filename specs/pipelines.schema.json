@@ -1,0 +1,252 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Wallpaper Engine Pipeline Schema",
+  "type": "object",
+  "patternProperties": {
+    "^[a-zA-Z0-9_]+$": {
+      "type": "object",
+      "description": "Render pipeline configuration",
+      "required": [
+        "shader"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "shader": {
+          "type": "string",
+          "description": "Path to the WGSL or WESL shader file relative to the plugin's 'shaders/' directory (e.g., 'wallpaper.wgsl' or 'subfolder/effect.wgsl')."
+        },
+        "entry_points": {
+          "type": "object",
+          "description": "Explicit entry point functions inside the shader module.",
+          "additionalProperties": false,
+          "properties": {
+            "vertex": {
+              "type": "string",
+              "description": "Name of the vertex shader entry point function."
+            },
+            "fragment": {
+              "type": "string",
+              "description": "Name of the fragment shader entry point function."
+            }
+          }
+        },
+        "blend": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "Opaque",
+                "Alpha",
+                "Additive",
+                "Replace"
+              ],
+              "description": "Preset blend mode applied to the color attachment."
+            },
+            {
+              "$ref": "#/$defs/CustomBlendState"
+            }
+          ]
+        },
+        "primitive": {
+          "type": "object",
+          "description": "Rasterization state for primitive assembly.",
+          "additionalProperties": false,
+          "properties": {
+            "topology": {
+              "type": "string",
+              "enum": [
+                "PointList",
+                "LineList",
+                "LineStrip",
+                "TriangleList",
+                "TriangleStrip"
+              ],
+              "default": "TriangleList",
+              "description": "Primitive topology used to render geometry."
+            },
+            "front_face": {
+              "type": "string",
+              "enum": [
+                "Ccw",
+                "Cw"
+              ],
+              "default": "Ccw",
+              "description": "Winding order defining front-facing triangles."
+            },
+            "cull_mode": {
+              "type": "string",
+              "enum": [
+                "None",
+                "Front",
+                "Back"
+              ],
+              "default": "None",
+              "description": "Face culling mode."
+            },
+            "polygon_mode": {
+              "type": "string",
+              "enum": [
+                "Fill",
+                "Line",
+                "Point"
+              ],
+              "default": "Fill",
+              "description": "Rasterization mode (requires non-standard GPU features for Line/Point)."
+            },
+            "unclipped_depth": {
+              "type": "boolean",
+              "default": false,
+              "description": "Disables depth clipping against near/far planes."
+            },
+            "conservative": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enables conservative rasterization."
+            }
+          }
+        },
+        "depth_stencil": {
+          "type": "object",
+          "description": "Depth and stencil testing configuration.",
+          "required": [
+            "format"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "type": "string",
+              "enum": [
+                "Depth32Float",
+                "Depth24Plus",
+                "Depth24PlusStencil8",
+                "Depth32FloatStencil8",
+                "Depth16Unorm"
+              ],
+              "description": "Texture format of the depth-stencil attachment."
+            },
+            "depth_write_enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enables writing to the depth buffer."
+            },
+            "depth_compare": {
+              "type": "string",
+              "enum": [
+                "Never",
+                "Less",
+                "Equal",
+                "LessEqual",
+                "Greater",
+                "NotEqual",
+                "GreaterEqual",
+                "Always"
+              ],
+              "default": "LessEqual",
+              "description": "Comparison function used to evaluate depth testing."
+            }
+          }
+        },
+        "multisample": {
+          "type": "object",
+          "description": "Multisampling / Anti-Aliasing parameters.",
+          "additionalProperties": false,
+          "properties": {
+            "count": {
+              "type": "integer",
+              "enum": [
+                1,
+                2,
+                4,
+                8,
+                16
+              ],
+              "default": 1,
+              "description": "Number of MSAA samples per pixel."
+            },
+            "mask": {
+              "type": "integer",
+              "default": 4294967295,
+              "description": "Bitmask controlling sample coverage."
+            },
+            "alpha_to_coverage_enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Computes alpha coverage based on fragment alpha."
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "BlendComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "src_factor": {
+          "type": "string",
+          "enum": [
+            "Zero",
+            "One",
+            "Src",
+            "OneMinusSrc",
+            "SrcAlpha",
+            "OneMinusSrcAlpha",
+            "Dst",
+            "OneMinusDst",
+            "DstAlpha",
+            "OneMinusDstAlpha",
+            "SrcAlphaSaturated",
+            "Constant",
+            "OneMinusConstant"
+          ]
+        },
+        "dst_factor": {
+          "type": "string",
+          "enum": [
+            "Zero",
+            "One",
+            "Src",
+            "OneMinusSrc",
+            "SrcAlpha",
+            "OneMinusSrcAlpha",
+            "Dst",
+            "OneMinusDst",
+            "DstAlpha",
+            "OneMinusDstAlpha",
+            "SrcAlphaSaturated",
+            "Constant",
+            "OneMinusConstant"
+          ]
+        },
+        "operation": {
+          "type": "string",
+          "enum": [
+            "Add",
+            "Subtract",
+            "ReverseSubtract",
+            "Min",
+            "Max"
+          ]
+        }
+      }
+    },
+    "CustomBlendState": {
+      "type": "object",
+      "description": "Explicit blend factors and operations.",
+      "required": [
+        "color",
+        "alpha"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/BlendComponent"
+        },
+        "alpha": {
+          "$ref": "#/$defs/BlendComponent"
+        }
+      }
+    }
+  }
+}

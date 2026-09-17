@@ -2,6 +2,6 @@
     "luau-lsp.platform.type": "standard",
     "luau-lsp.sourcemap.enabled": false,
     "luau-lsp.types.definitionFiles": {
-        "technoir": "./luau.types/technoir.luau"
+        "technoir": "./specs/technoir.d.luau"
     }
 }

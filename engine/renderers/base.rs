@@ -60,6 +60,7 @@ impl Renderer {
             alpha_mode: caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
+            color_space: wgpu::SurfaceColorSpace::Auto,
         };
 
         surface.configure(&device, &config);
@@ -103,10 +104,10 @@ impl Renderer {
         }
     }
 
-    #[inline]
-    pub fn present(frame: wgpu::SurfaceTexture) {
-        frame.present();
-    }
+    // #[inline]
+    // pub fn present(frame: wgpu::SurfaceTexture) {
+    //     frame.present();
+    // }
 
     #[inline]
     pub fn get_aspect_ratio(&self) -> f32 {

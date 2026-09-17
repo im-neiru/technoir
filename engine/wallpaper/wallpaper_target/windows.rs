@@ -1,6 +1,7 @@
 use core::{
     ffi::c_void,
     mem,
+    num::NonZeroU16,
     ptr::{self, NonNull},
 };
 
@@ -13,14 +14,19 @@ use windows_sys::Win32::{
     UI::WindowsAndMessaging::*,
 };
 
-use crate::wallpaper::{ScreenBounds, WallpaperDriver, event_loop::window_proc};
+use crate::{
+    graphics::{Context, WindowSurface},
+    wallpaper::{ScreenBounds, WallpaperDriver, event_loop::window_proc},
+};
 
 pub struct WallpaperTarget {
     pub(in crate::wallpaper) hwnd: NonNull<c_void>,
     hinstance: NonNull<c_void>,
     classname: [u16; 96],
 
-    pub(in crate::wallpaper) visualizer: crate::Visualizer,
+    pub(in crate::wallpaper) surface: WindowSurface,
+    // old:
+    // pub(in crate::wallpaper) visualizer: crate::Visualizer,
 }
 
 impl WallpaperTarget {
@@ -29,7 +35,7 @@ impl WallpaperTarget {
         bounds: &ScreenBounds,
         hinstance: NonNull<c_void>,
         parent: NonNull<c_void>,
-        wgpu_instance: &wgpu::Instance,
+        context: &Context,
     ) -> Self {
         unsafe {
             let classname = Self::build_classname(screen_name);
@@ -86,44 +92,59 @@ impl WallpaperTarget {
                 SWP_SHOWWINDOW | SWP_NOACTIVATE,
             );
 
-            let wgpu_surface = wgpu_instance
-                .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
-                    raw_display_handle: Some(
-                        RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
-                    ),
-
-                    raw_window_handle: RawWindowHandle::Win32(Win32WindowHandle::new(
-                        hwnd.addr().cast_signed(),
-                    )),
-                })
-                .expect("Failed to create wgpu::Surface");
-
-            let (width, height) = {
+            let (width, height) = unsafe {
                 let mut rect = mem::zeroed();
 
-                GetClientRect(hwnd.as_ptr() as _, &mut rect);
+                GetClientRect(self.hwnd.as_ptr() as _, &mut rect);
+
                 (
-                    (rect.right - rect.left).max(1) as u32,
-                    (rect.bottom - rect.top).max(1) as u32,
+                    NonZeroU16::new_unchecked((rect.right - rect.left).max(1) as u16),
+                    NonZeroU16::new_unchecked((rect.bottom - rect.top).max(1) as u16),
                 )
             };
 
+            let target = wgpu::SurfaceTargetUnsafe::RawHandle {
+                raw_display_handle: Some(RawDisplayHandle::Windows(WindowsDisplayHandle::new())),
+                raw_window_handle: RawWindowHandle::Win32({
+                    let mut h = Win32WindowHandle::new(hwnd.addr().cast_signed());
+
+                    h.hinstance = Some(hinstance.addr().cast_signed());
+
+                    h
+                }),
+            };
+
+            let surface = context.create_window_surface(target, width, height);
+
             ShowWindow(hwnd.as_ptr(), SW_HIDE);
 
-            let visualizer = crate::Visualizer::new(wgpu_instance, wgpu_surface, width, height).await;
+            // let visualizer =
+            //     crate::Visualizer::new(wgpu_instance, wgpu_surface, width, height).await;
 
             Self {
                 hwnd,
                 hinstance,
                 classname,
-                visualizer,
+                surface,
+                // visualizer,
             }
         }
     }
 
     #[inline]
-    pub(crate) fn resize(&mut self, width: u32, height: u32) {
-        self.visualizer.resize(width, height);
+    pub(crate) fn resize(&mut self, context: &Context) {
+        let (width, height) = unsafe {
+            let mut rect = mem::zeroed();
+
+            GetClientRect(self.hwnd.as_ptr() as _, &mut rect);
+
+            (
+                NonZeroU16::new_unchecked((rect.right - rect.left).max(1) as u16),
+                NonZeroU16::new_unchecked((rect.bottom - rect.top).max(1) as u16),
+            )
+        };
+
+        self.surface.resize(context, width, height);
     }
 
     fn build_classname(screen_name: &str) -> [u16; 96] {

@@ -37,59 +37,60 @@ pub struct WatcherEntry {
     pub is_full: bool,
 }
 
-pub struct WatcherGuard;
+pub struct DesktopWatcher;
 
-pub fn start_watching() -> Option<WatcherGuard> {
-    let mut current = USER_COUNT.load(Ordering::Acquire);
-    while current > 0 {
-        if current == u8::MAX {
-            std::process::abort();
+impl DesktopWatcher {
+    pub fn new() -> Option<DesktopWatcher> {
+        let mut current = USER_COUNT.load(Ordering::Acquire);
+        while current > 0 {
+            if current == u8::MAX {
+                std::process::abort();
+            }
+            match USER_COUNT.compare_exchange_weak(
+                current,
+                current + 1,
+                Ordering::Relaxed,
+                Ordering::Acquire,
+            ) {
+                Ok(_) => return Some(DesktopWatcher),
+                Err(actual) => current = actual,
+            }
         }
-        match USER_COUNT.compare_exchange_weak(
-            current,
-            current + 1,
-            Ordering::Relaxed,
-            Ordering::Acquire,
-        ) {
-            Ok(_) => return Some(WatcherGuard),
-            Err(actual) => current = actual,
+
+        let hook = unsafe {
+            SetWinEventHook(
+                EVENT_SYSTEM_FOREGROUND,
+                EVENT_OBJECT_LOCATIONCHANGE,
+                ptr::null_mut(),
+                Some(desktop_callback),
+                0,
+                0,
+                WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS,
+            )
+        };
+
+        if hook.is_null() {
+            return None;
         }
+
+        if HOOK
+            .compare_exchange(0, hook as u64, Ordering::Release, Ordering::Relaxed)
+            .is_err()
+        {
+            unsafe { UnhookWinEvent(hook) };
+        }
+
+        USER_COUNT.fetch_add(1, Ordering::Relaxed);
+
+        Some(DesktopWatcher)
     }
 
-    let hook = unsafe {
-        SetWinEventHook(
-            EVENT_SYSTEM_FOREGROUND,
-            EVENT_OBJECT_LOCATIONCHANGE,
-            ptr::null_mut(),
-            Some(desktop_callback),
-            0,
-            0,
-            WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS,
-        )
-    };
-
-    if hook.is_null() {
-        return None;
-    }
-
-    if HOOK
-        .compare_exchange(0, hook as u64, Ordering::Release, Ordering::Relaxed)
-        .is_err()
-    {
-        unsafe { UnhookWinEvent(hook) };
-    }
-
-    USER_COUNT.fetch_add(1, Ordering::Relaxed);
-    Some(WatcherGuard)
-}
-
-impl WatcherGuard {
     pub fn poll(&self) -> Option<WatcherEntry> {
         QUEUE.pop()
     }
 }
 
-impl Drop for WatcherGuard {
+impl Drop for DesktopWatcher {
     fn drop(&mut self) {
         if USER_COUNT.fetch_sub(1, Ordering::Release) != 1 {
             return;

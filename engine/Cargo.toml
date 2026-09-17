@@ -13,16 +13,22 @@ crossbeam-queue.workspace = true
 glam.workspace = true
 glyphon.workspace = true
 image.workspace = true
+indexmap.workspace = true
 rand.workspace = true
 rapidhash.workspace = true
 raw-window-handle.workspace = true
 rustfft.workspace = true
+serde.workspace = true
 smol.workspace = true
+thiserror.workspace = true
+toml.workspace = true
 wasapi.workspace = true
 wgpu.workspace = true
-chrono = "0.4.44"
+libloading.workspace = true
+chrono.workspace = true
 
 ui.path = "../ui"
+wgsl-shaders = { path = "../wallpapers/wgsl" }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys.workspace = true

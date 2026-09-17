@@ -1,11 +1,13 @@
-mod event_loop;
-
 use core::{
     ffi::c_void,
     mem,
     ptr::{self, NonNull},
 };
+use std::num::NonZeroU16;
 
+use raw_window_handle::{
+    RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle,
+};
 use windows_sys::{
     Win32::{
         Foundation::{ERROR_CLASS_ALREADY_EXISTS, GetLastError},
@@ -21,71 +23,63 @@ use windows_sys::{
     w,
 };
 
-use raw_window_handle::{
-    RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle,
-};
+use crate::graphics::Context;
 
-use super::messages::{WM_APP_TERMINATE, WM_USER_TRAY};
-
-pub(crate) use event_loop::enter_loop;
-
-pub struct Manager {
-    hwnd: NonNull<c_void>,
-    hinstance: NonNull<c_void>,
-    is_open: bool,
-    ui: ui::ManagerUi,
-}
-
-impl Manager {
-    pub(super) fn new(hinstance: NonNull<c_void>, visible: bool) -> Self {
+impl super::Manager {
+    pub(crate) fn new(hinstance: NonNull<c_void>, visible: bool) -> Self {
         let hwnd = unsafe { Self::new_manager_win(hinstance, visible) };
+
+        let primary_target = wgpu::SurfaceTargetUnsafe::RawHandle {
+            raw_display_handle: Some(RawDisplayHandle::Windows(WindowsDisplayHandle::new())),
+            raw_window_handle: RawWindowHandle::Win32({
+                let mut h = Win32WindowHandle::new(hwnd.addr().cast_signed());
+
+                h.hinstance = Some(hinstance.addr().cast_signed());
+
+                h
+            }),
+        };
+
+        let (width, height) = unsafe {
+            let mut rect = mem::zeroed();
+
+            GetClientRect(hwnd.as_ptr() as _, &mut rect);
+
+            (
+                NonZeroU16::new_unchecked((rect.right - rect.left).max(1) as u16),
+                NonZeroU16::new_unchecked((rect.bottom - rect.top).max(1) as u16),
+            )
+        };
+
+        let (ctx, surface) =
+            smol::block_on(Context::new_with_primary(primary_target, width, height));
 
         Self {
             hwnd,
             hinstance,
             is_open: visible,
             ui: ui::ManagerUi::new(),
+            ctx,
+            surface,
         }
     }
 
-    pub(super) async fn init_graphics(&mut self, _wgpu_instance: &wgpu::Instance) {
-        // let wgpu_surface = unsafe {
-        //     wgpu_instance
-        //         .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
-        //             raw_display_handle: Some(
-        //                 RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
-        //             ),
+    pub(super) fn resize(&mut self) {
+        let (width, height) = unsafe {
+            let mut rect = mem::zeroed();
 
-        //             raw_window_handle: RawWindowHandle::Win32(Win32WindowHandle::new(
-        //                 self.hwnd.addr().cast_signed(),
-        //             )),
-        //         })
-        //         .expect("Failed to create wgpu::Surface")
-        // };
+            GetClientRect(self.hwnd.as_ptr() as _, &mut rect);
 
-        // let (width, height) = {
-        //     let mut rect = unsafe { mem::zeroed() };
-        //     unsafe { GetClientRect(self.hwnd.as_ptr() as _, &mut rect) };
-        //     (
-        //         (rect.right - rect.left).max(1) as u32,
-        //         (rect.bottom - rect.top).max(1) as u32,
-        //     )
-        // };
+            (
+                NonZeroU16::new_unchecked((rect.right - rect.left).max(1) as u16),
+                NonZeroU16::new_unchecked((rect.bottom - rect.top).max(1) as u16),
+            )
+        };
 
-        // let rendrer = crate::Renderer2d::new(wgpu_instance, wgpu_surface, width, height).await;
-
-        // self.renderer = Some(rendrer);
+        self.surface.resize(&self.ctx, width, height);
     }
 
-    pub(super) fn render(&mut self) {
-        self.ui.render();
-    }
-
-    pub(super) fn resize(&mut self, width: u32, height: u32) {}
-}
-
-impl Manager {
-    const SANDBOX_WIN_NAME: PCWSTR = w!("TechNoir");
+    pub(super) const SANDBOX_WIN_NAME: PCWSTR = w!("TechNoir");
 
     unsafe fn new_manager_win(hinstance: NonNull<c_void>, visible: bool) -> NonNull<c_void> {
         let wc = unsafe {
@@ -102,7 +96,7 @@ impl Manager {
 
             WNDCLASSW {
                 style: CS_HREDRAW | CS_VREDRAW,
-                lpfnWndProc: Some(event_loop::window_proc),
+                lpfnWndProc: Some(super::event_loop::window_proc),
                 hInstance: hinstance.as_ptr(),
                 lpszClassName: Self::SANDBOX_WIN_NAME,
                 hCursor: cursor,
@@ -143,7 +137,7 @@ impl Manager {
         .expect("Failed to create window")
     }
 
-    pub(super) fn store_state(&self, state_ptr: NonNull<super::state::State>) {
+    pub(super) fn store_state(&self, state_ptr: NonNull<crate::Entry>) {
         unsafe {
             SetWindowLongPtrW(
                 self.hwnd.as_ptr(),
@@ -164,7 +158,7 @@ impl Manager {
         nid.uID = 1;
 
         nid.uFlags = NIF_MESSAGE | NIF_TIP | NIF_ICON;
-        nid.uCallbackMessage = WM_USER_TRAY;
+        nid.uCallbackMessage = super::WM_USER_TRAY;
 
         let h_icon = LoadImageW(
             hinstance.as_ptr(),
@@ -206,39 +200,6 @@ impl Manager {
                 _ => {}
             }
             DestroyMenu(menu);
-        }
-    }
-
-    pub(super) fn show(&mut self) {
-        if !self.is_open {
-            unsafe { ShowWindow(self.hwnd.as_ptr(), SW_SHOW) };
-            self.is_open = true;
-        }
-    }
-
-    pub(super) fn hide(&mut self) {
-        if self.is_open {
-            unsafe { ShowWindow(self.hwnd.as_ptr(), SW_HIDE) };
-            self.is_open = false;
-        }
-    }
-
-    pub(super) fn terminate_program(&mut self) {
-        unsafe { PostMessageW(self.hwnd.as_ptr(), WM_APP_TERMINATE, 0, 0) };
-    }
-}
-
-impl Drop for Manager {
-    fn drop(&mut self) {
-        unsafe {
-            let mut nid: NOTIFYICONDATAW = mem::zeroed();
-            nid.cbSize = mem::size_of::<NOTIFYICONDATAW>() as u32;
-            nid.hWnd = self.hwnd.as_ptr();
-            nid.uID = 1;
-            Shell_NotifyIconW(NIM_DELETE, &nid);
-
-            DestroyWindow(self.hwnd.as_ptr());
-            UnregisterClassW(Self::SANDBOX_WIN_NAME, self.hinstance.as_ptr());
         }
     }
 }

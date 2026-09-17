@@ -11,6 +11,7 @@ pub use id::WallpaperId;
 
 pub struct WallpaperLoader {
     wallpapers: RapidHashMap<WallpaperId, Wallpaper>,
+    // libraries: IndexMap<String, Library>,
 }
 
 struct Wallpaper {
@@ -21,18 +22,20 @@ struct Wallpaper {
 }
 
 impl WallpaperLoader {
-    pub fn new(path: impl AsRef<Path>) -> Self {
-        let library_file =
-            library_file::LibraryFile::load(path).expect("Failed to load library file");
+    pub fn new() -> Self {
+        // let library_file =
+        //     library_file::LibraryFile::load(path).expect("Failed to load library file");
 
-        let mut libraries = IndexMap::new();
+        // let mut libraries = IndexMap::new();
 
-        for (name, path) in library_file.iter() {
-            let lib = unsafe { Library::new(path).expect("Failed to load library") };
-            libraries.insert(name.to_string(), lib);
+        // for (name, path) in library_file.iter() {
+        //     let lib = unsafe { Library::new(path).expect("Failed to load library") };
+        //     libraries.insert(name.to_string(), lib);
+        // }
+
+        Self {
+            wallpapers: RapidHashMap::default(),
         }
-
-        Self { libraries }
     }
 
     pub fn load(

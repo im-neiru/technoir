@@ -10,7 +10,7 @@ use super::Renderer;
 use crate::samplers::SpectrumAudioLoopback;
 
 pub struct Visualizer {
-    renderer: Renderer,
+    pub(crate) renderer: Renderer,
 
     prev_spectrum_l: [f32; SAMPLE_COUNT],
     prev_spectrum_r: [f32; SAMPLE_COUNT],
@@ -455,7 +455,9 @@ impl Visualizer {
     }
 
     pub fn render(&mut self, audio: &mut SpectrumAudioLoopback, time: f32) {
+        println!("RENDER");
         let Some(frame) = self.renderer.begin_frame() else {
+            println!("HMM");
             return;
         };
 

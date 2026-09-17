@@ -69,19 +69,22 @@ impl Screen {
         self.is_filled
     }
 
-    pub fn spawn_target(
+    pub async fn spawn_target(
         &mut self,
         hinstance: NonNull<c_void>,
         parent: NonNull<c_void>,
         wgpu_instance: &wgpu::Instance,
     ) {
-        self.target = Some(WallpaperTarget::new(
-            &self.name,
-            &self.bounds,
-            hinstance,
-            parent,
-            wgpu_instance,
-        ));
+        self.target = Some(
+            WallpaperTarget::new(
+                &self.name,
+                &self.bounds,
+                hinstance,
+                parent,
+                wgpu_instance,
+            )
+            .await,
+        );
     }
 }
 

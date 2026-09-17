@@ -5,10 +5,12 @@ use wgpu::{
     TextureView, TextureViewDescriptor,
 };
 
-pub struct TargetSurface {
+pub struct StagingSurface {
     texture: Texture,
-    view: TextureView,
+    pub(super) view: TextureView,
     format: TextureFormat,
+    pub(super) width: u32,
+    pub(super) height: u32,
 }
 
 impl super::Context {
@@ -18,7 +20,7 @@ impl super::Context {
         width: NonZeroU16,
         height: NonZeroU16,
         format: TextureFormat,
-    ) -> TargetSurface {
+    ) -> StagingSurface {
         let size = Extent3d {
             width: width.get() as u32,
             height: height.get() as u32,
@@ -38,20 +40,17 @@ impl super::Context {
 
         let view = texture.create_view(&TextureViewDescriptor::default());
 
-        TargetSurface {
+        StagingSurface {
             texture,
             view,
             format,
+            width: size.width,
+            height: size.height,
         }
     }
 }
 
-impl TargetSurface {
-    #[inline]
-    pub(crate) fn acquire_view(&self) -> &TextureView {
-        &self.view
-    }
-
+impl StagingSurface {
     #[inline]
     pub fn resize(&mut self, context: &super::Context, width: NonZeroU16, height: NonZeroU16) {
         let size = Extent3d {
@@ -75,5 +74,8 @@ impl TargetSurface {
 
         self.texture = texture;
         self.view = view;
+
+        self.width = size.width;
+        self.height = size.height;
     }
 }

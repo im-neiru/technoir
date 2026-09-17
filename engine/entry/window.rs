@@ -5,12 +5,17 @@ use core::{
 
 use raw_window_handle as rwh;
 
-use crate::{manager::Manager, wallpaper::WallpaperDriver};
+use crate::{
+    manager::Manager,
+    plugin::{PluginLoader, package::Packager},
+    wallpaper::WallpaperDriver,
+};
 
 pub struct Entry {
     pub(crate) hinstance: NonNull<c_void>,
     pub(crate) wallpaper_driver: WallpaperDriver,
     pub(crate) manager: Manager,
+    pub(crate) plugin_loader: PluginLoader,
 }
 
 impl Entry {
@@ -25,15 +30,25 @@ impl Entry {
         let manager = Manager::new(hinstance, config.open_manager);
 
         let wallpaper_driver = WallpaperDriver::new(manager.graphics()).await;
+        let plugin_loader = PluginLoader::new();
 
         Self {
             wallpaper_driver,
             hinstance,
             manager,
+            plugin_loader,
         }
     }
 
     pub fn run(mut self) {
+        // test only
+        smol::block_on(self.plugin_loader.load_wallpaper());
+        smol::block_on(async {
+            let packager = Packager::release_mode();
+
+            packager.pack("./sandbox/wallpaper", None).await;
+        });
+
         self.wallpaper_driver.run();
         crate::manager::enter_loop(self);
     }

@@ -5,6 +5,7 @@ mod config;
 mod entry;
 mod graphics;
 mod manager;
+mod plugin;
 mod samplers;
 mod utils;
 

@@ -15,7 +15,7 @@ use windows_sys::Win32::{
 use crate::{
     utils::{DesktopWatcher, get_desktop_handles},
     wallpaper::{
-        Screen, WallpaperProvider,
+        Screen, WallpaperLoader, WallpaperProvider,
         event_loop::{WM_APP_TERMINATE, enter_loop},
         renderer::WallpaperRenderer,
     },
@@ -27,11 +27,15 @@ pub struct WallpaperDriver {
     renderer: Option<WallpaperRenderer>,
     watcher: Option<DesktopWatcher>,
     worker: HANDLE,
+    loader: WallpaperLoader,
 }
 
 impl WallpaperDriver {
     pub(crate) async fn new(instance: wgpu::Instance) -> Self {
         let screens = Screen::get_screens();
+        let mut loader = WallpaperLoader::new();
+
+        loader.load(screen, path, prepare_context, cleanup_context)
 
         Self {
             screens,
@@ -39,6 +43,7 @@ impl WallpaperDriver {
             renderer: None,
             worker: ptr::null_mut(),
             watcher: None,
+            loader,
         }
     }
 

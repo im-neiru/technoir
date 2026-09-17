@@ -76,8 +76,7 @@ impl Packager {
                         project
                             .as_ref()
                             .join("build")
-                            .join(manifest.plugin.id.as_str())
-                            .with_extension("zip"),
+                            .join(format!("{}.tnzip", manifest.plugin.id)),
                     )
                 });
 

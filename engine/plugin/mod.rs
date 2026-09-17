@@ -1,3 +1,4 @@
+mod factory;
 mod loader;
 mod module;
 mod wallpaper_instance;

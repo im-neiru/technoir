@@ -1,5 +1,6 @@
 mod base;
 mod context;
+mod staging_target;
 mod texture_helpers;
 mod visualizer;
 mod window_surface;

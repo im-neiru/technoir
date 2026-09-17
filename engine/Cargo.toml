@@ -7,6 +7,10 @@ edition = "2024"
 name = "engine"
 path = "lib.rs"
 
+[[bin]]
+name = "pack_sandbox"
+path = "pack_sandbox.rs"
+
 [dependencies]
 bytemuck.workspace = true
 crossbeam-queue.workspace = true

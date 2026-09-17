@@ -44,10 +44,6 @@ impl Entry {
         // // test only
         // smol::block_on(self.plugin_loader.load_wallpaper());
         smol::block_on(async {
-            // let packager = Packager::release_mode();
-
-            // packager.pack("./sandbox/wallpaper", None).await;
-
             let v = self.plugin_loader.enumerate_plugins().await;
 
             println!("{:#?}", v.first().unwrap().info());

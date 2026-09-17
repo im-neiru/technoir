@@ -15,7 +15,7 @@ pub struct StagingSurface {
 
 impl super::Context {
     #[inline]
-    pub fn create_target_surface(
+    pub fn create_staging_surface(
         &self,
         width: NonZeroU16,
         height: NonZeroU16,

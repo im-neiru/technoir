@@ -4,7 +4,7 @@ use super::{package::PluginType, wallpaper_instance::WallpaperInstance};
 
 pub(crate) struct PluginFactory {
     pub(super) lua: Lua,
-    pub(super) table: Table,
+    pub(super) init: Function,
     pub(super) kind: PluginType,
 }
 
@@ -16,9 +16,9 @@ impl PluginFactory {
         };
 
         let instance: Table = self
-            .table
-            .call_method("make", (init_ctx,))
-            .expect("failed to run factory.make()");
+            .init
+            .call((init_ctx,))
+            .expect("failed to construct wallpaper");
 
         let fn_draw: Function = instance
             .get("draw")

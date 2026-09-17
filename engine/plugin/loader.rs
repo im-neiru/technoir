@@ -4,7 +4,7 @@ use mlua::prelude::*;
 use rapidhash::RapidHashSet;
 use smol::{fs, stream::StreamExt};
 
-use super::package::{Plugin, PluginManifest};
+use super::package::{Plugin, PluginManifest, PluginPackage};
 use crate::utils::program_data_path;
 
 pub(crate) struct PluginLoader {
@@ -22,7 +22,7 @@ impl PluginLoader {
     }
 
     #[inline]
-    pub(crate) async fn enumerate_plugins(&self) -> Box<[(super::package::Plugin, Box<Path>)]> {
+    pub(crate) async fn enumerate_plugins(&self) -> Box<[PluginPackage]> {
         let mut plugins = Vec::new();
         let mut seen_files = RapidHashSet::default();
 
@@ -40,31 +40,13 @@ impl PluginLoader {
 
         plugins.into_boxed_slice()
     }
-
-    // olld will remove later
-    #[inline]
-    pub(crate) async fn load_wallpaper(&self) {
-        // for testing
-        let file = fs::File::open("sandbox/wallpaper/main.luau").await.unwrap();
-
-        let module = self.load_module(file).await;
-
-        let instance = module.instantiate_wallpaper();
-
-        let mut draw_ctx = super::module::WallpaperDrawContext { frame_count: 1 };
-
-        for i in 0..8 {
-            instance.draw(&module.lua, &draw_ctx);
-            draw_ctx.frame_count = i;
-        }
-    }
 }
 
 #[inline]
 async fn enumerate_root(
     root: &Path,
     seen_files: &mut RapidHashSet<PathBuf>,
-    plugins: &mut Vec<(Plugin, Box<Path>)>,
+    plugins: &mut Vec<PluginPackage>,
 ) {
     let Ok(mut entries) = fs::read_dir(root).await else {
         return;
@@ -94,8 +76,8 @@ async fn enumerate_root(
             continue;
         }
 
-        if let Some(plugin) = PluginManifest::peek_plugin(&path).await {
-            plugins.push((plugin, path.into_boxed_path()));
+        if let Some(plugin) = PluginManifest::read_package(&path).await {
+            plugins.push(plugin);
         }
     }
 }

@@ -50,7 +50,7 @@ impl Entry {
 
             let v = self.plugin_loader.enumerate_plugins().await;
 
-            println!("{:#?}", v.as_ref());
+            println!("{:#?}", v.first().unwrap().info());
         });
 
         self.wallpaper_driver.run();

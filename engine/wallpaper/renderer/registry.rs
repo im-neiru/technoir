@@ -6,7 +6,7 @@ use core::{
 
 use indexmap::IndexMap;
 
-pub struct Registry<Key, Index, Value>
+pub(super) struct Registry<Key, Index, Value>
 where
     Key: Eq + Hash,
     Index: Eq + Hash + Copy + Clone + From<usize> + Debug,
@@ -26,7 +26,7 @@ where
     Index: Eq + Hash + Copy + Clone + From<usize> + Debug,
 {
     #[inline]
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self {
             items: IndexMap::new(),
             _marker: PhantomData,
@@ -34,7 +34,7 @@ where
     }
 
     #[inline]
-    pub fn get_or_insert<E>(
+    pub(super) fn get_or_insert<E>(
         &mut self,
         key: Key,
         create: impl FnOnce() -> Result<Value, E>,
@@ -58,7 +58,7 @@ where
     }
 
     #[inline]
-    pub fn get_by_index(&self, index: usize) -> Option<&Value> {
+    pub(super) fn get_by_index(&self, index: usize) -> Option<&Value> {
         let (_, item) = self.items.get_index(index)?;
 
         Some(&item.value)

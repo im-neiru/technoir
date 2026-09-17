@@ -5,11 +5,11 @@ mod textures;
 
 use wgpu::{Device, DeviceDescriptor, Instance, Queue, RequestDeviceError};
 
-pub use init::PreferedDeviceKey;
+pub(in crate::wallpaper) use init::PreferedDeviceKey;
 pub use shaders::{ShaderIndex, ShaderSource};
 pub use textures::{TextureIndex, TextureSize};
 
-pub struct WallpaperRenderer {
+pub(in crate::wallpaper) struct WallpaperRenderer {
     pub(in crate::wallpaper) device: Device,
     pub(in crate::wallpaper) queue: Queue,
     textures: registry::Registry<textures::TextureKey, TextureIndex, wgpu::Texture>,
@@ -25,7 +25,7 @@ pub struct CleanupContext<'r> {
 }
 
 impl WallpaperRenderer {
-    pub(crate) async fn new(
+    pub(in crate::wallpaper) async fn new(
         instance: &Instance,
         preferred: Option<PreferedDeviceKey>,
         screens: &mut [super::Screen],
@@ -57,7 +57,7 @@ impl WallpaperRenderer {
 }
 
 #[derive(Debug, Clone, thiserror::Error)]
-pub enum WallpaperRendererCreateError {
+pub(in crate::wallpaper) enum WallpaperRendererCreateError {
     #[error("No adapter found")]
     NoAdapterFound,
     #[error("Failed to request device")]

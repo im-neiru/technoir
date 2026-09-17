@@ -15,7 +15,7 @@ use windows_sys::{
 
 use crate::wallpaper::WallpaperTarget;
 
-pub struct Screen {
+pub(in crate::wallpaper) struct Screen {
     pub(in crate::wallpaper) hmonitor: NonNull<c_void>,
     pub(in crate::wallpaper) is_filled: bool,
     pub(in crate::wallpaper) target: Option<WallpaperTarget>,
@@ -23,12 +23,12 @@ pub struct Screen {
     name: String,
     bounds: super::ScreenBounds,
 
-    pub(crate) provider: Option<Box<dyn crate::wallpaper::WallpaperProvider>>,
-    pub(crate) library_index: Option<usize>,
+    pub(in crate::wallpaper) provider: Option<Box<dyn crate::wallpaper::WallpaperProvider>>,
+    pub(in crate::wallpaper) library_index: Option<usize>,
 }
 
 impl Screen {
-    pub(crate) fn get_screens() -> Vec<Self>
+    pub(in crate::wallpaper) fn get_screens() -> Vec<Self>
     where
         Self: Sized,
     {
@@ -61,15 +61,15 @@ impl Screen {
         screens
     }
 
-    pub fn get_bounds(&self) -> &super::ScreenBounds {
+    pub(in crate::wallpaper) fn get_bounds(&self) -> &super::ScreenBounds {
         &self.bounds
     }
 
-    pub(crate) fn is_filled(&self) -> bool {
+    pub(in crate::wallpaper) fn is_filled(&self) -> bool {
         self.is_filled
     }
 
-    pub async fn spawn_target(
+    pub(in crate::wallpaper) async fn spawn_target(
         &mut self,
         hinstance: NonNull<c_void>,
         parent: NonNull<c_void>,

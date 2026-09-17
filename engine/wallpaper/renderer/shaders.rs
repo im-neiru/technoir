@@ -3,7 +3,7 @@ use wgpu::ShaderModule;
 pub use wgsl_shaders::ShaderSource;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum ShaderKey {
+pub(super) enum ShaderKey {
     BuiltIn(ShaderSource),
 }
 

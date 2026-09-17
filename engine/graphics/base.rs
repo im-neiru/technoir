@@ -1,8 +1,7 @@
 pub struct Renderer {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
-    pub surface: wgpu::Surface<'static>,
-    pub config: wgpu::SurfaceConfiguration,
+    pub adapter: wgpu::Adapter,
 }
 
 impl Renderer {

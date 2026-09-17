@@ -28,9 +28,11 @@ wasapi.workspace = true
 wgpu.workspace = true
 libloading.workspace = true
 chrono.workspace = true
+zip.workspace = true
 
 ui.path = "../ui"
 wgsl-shaders = { path = "../wallpapers/wgsl" }
+
 
 [target.'cfg(windows)'.dependencies]
 windows-sys.workspace = true

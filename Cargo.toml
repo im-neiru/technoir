@@ -20,8 +20,15 @@ smol = "2.0.2"
 thiserror = "2.0.18"
 toml = "1.1.6"
 wasapi = "0.24.0"
+mlua = { version = "0.12.1", default-features = false, features = [
+    "luau-jit",
+    "luau-vector4",
+] }
 naga = { version = "30.0.1", features = ["serialize", "deserialize"] }
-wgpu = { version = "30.0.1", default-features = false,  features = ["naga-ir", "dx12"] }
+wgpu = { version = "30.0.1", default-features = false, features = [
+    "naga-ir",
+    "dx12",
+] }
 windows-sys = { version = "0.61.2", features = [
     "Win32_Devices_Display",
     "Win32_Foundation",

@@ -1,0 +1,18 @@
+#:schema ../specs/technoir.schema.json
+
+[plugin]
+name = "Cosmic Bubble"
+version = "0.1.0"
+description = "Bouncing bubble"
+author = "im-neiru"
+license = "GPL-3.0"
+
+api_version = "0.1.0"
+
+
+type = "wallpaper"
+entry_point = "main.luau"
+
+pipelines = "pipelines.toml"
+
+tags = ["synthwave", "visualizer"]

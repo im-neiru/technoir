@@ -1,0 +1,11 @@
+#:schema ../../specs/pipelines.schema.json
+
+[main_pass]
+shader = "visualizer.wgsl"
+blend = "Alpha"
+
+
+[main_pass.entry_points]
+vertex = "vs_main"
+fragment = "fs_main"
+

@@ -95,6 +95,8 @@ impl Packager {
             zip.start_file("pipelines.cbor", self.zip_opt).unwrap();
             zip.write_all(&pipelines_bytes).unwrap();
 
+            manifest.plugin.pipelines = "pipelines.cbor".to_owned();
+
             let manifest_bytes = cbor2::to_vec(&manifest).unwrap();
 
             zip.start_file("technoir.cbor", self.zip_opt).unwrap();

@@ -9,6 +9,7 @@
     "plugin": {
       "type": "object",
       "required": [
+        "id",
         "name",
         "version",
         "api_version",
@@ -17,6 +18,11 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*){1,2}$",
+          "description": "Unique reverse-domain-style plugin identifier, such as 'technoir.cosmicbubble' or 'dev.technoir.cosmicbubble'."
+        },
         "name": {
           "type": "string",
           "description": "Human-readable name of the plugin."

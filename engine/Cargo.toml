@@ -15,6 +15,7 @@ glyphon.workspace = true
 image.workspace = true
 indexmap.workspace = true
 mlua.workspace = true
+naga.workspace = true
 rand.workspace = true
 rapidhash.workspace = true
 raw-window-handle.workspace = true

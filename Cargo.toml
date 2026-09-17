@@ -26,7 +26,12 @@ mlua = { version = "0.12.1", default-features = false, features = [
     "luau-vector4",
 ] }
 cbor2 = "1.1"
-naga = { version = "30.0.1", features = ["serialize", "deserialize"] }
+naga = { version = "30.0.1", features = [
+    "serialize",
+    "deserialize",
+    "wgsl-in",
+    "wgsl-out",
+] }
 wgpu = { version = "30.0.1", default-features = false, features = [
     "naga-ir",
     "dx12",

@@ -4,7 +4,7 @@ use mlua::prelude::*;
 use smol::fs;
 use zip::{CompressionMethod, ZipWriter, write::SimpleFileOptions};
 
-use super::{manifest::PluginManifest, pipelines::Pipelines};
+use super::{manifest::PluginManifest, pipelines::Pipelines, wgsl_minifier::minify_wgsl};
 
 pub struct Packager {
     compiler: LuaCompiler,
@@ -59,6 +59,8 @@ impl Packager {
                 .await
                 .unwrap();
 
+            let wgsl = minify_wgsl(&wgsl).unwrap();
+
             let index = shaders_list.len();
             shaders_list.push(wgsl.into_boxed_str());
 
@@ -74,8 +76,7 @@ impl Packager {
                         project
                             .as_ref()
                             .join("build")
-                            .join(manifest.plugin.id.as_str())
-                            .with_extension("zip"),
+                            .join(format!("{}.tnzip", manifest.plugin.id)),
                     )
                 });
 

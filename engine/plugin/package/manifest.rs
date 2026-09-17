@@ -1,13 +1,13 @@
 use semver::Version;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PluginManifest {
     pub plugin: Plugin,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Plugin {
     /// Human-readable plugin name.
@@ -54,7 +54,7 @@ pub struct Plugin {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum PluginType {
     #[serde(rename = "wallpaper")]
     Wallpaper,

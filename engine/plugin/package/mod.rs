@@ -1,3 +1,4 @@
+mod get_metadata;
 mod manifest;
 mod packager;
 mod pipelines;

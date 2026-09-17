@@ -97,7 +97,7 @@ impl Packager {
 
             let manifest_bytes = cbor2::to_vec(&manifest).unwrap();
 
-            zip.start_file("manifest.cbor", self.zip_opt).unwrap();
+            zip.start_file("technoir.cbor", self.zip_opt).unwrap();
             zip.write_all(&manifest_bytes).unwrap();
 
             for (index, shader) in shaders_list.into_iter().enumerate() {

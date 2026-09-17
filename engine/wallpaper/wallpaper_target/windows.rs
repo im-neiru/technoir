@@ -122,6 +122,7 @@ impl WallpaperTarget {
                 alpha_mode: wgpu::CompositeAlphaMode::Auto,
                 view_formats: vec![],
                 desired_maximum_frame_latency: 2,
+                color_space: wgpu::SurfaceColorSpace::Srgb,
             };
 
             Self {

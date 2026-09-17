@@ -3,8 +3,7 @@ use chrono::Duration;
 use glam::*;
 
 use glyphon::{
-    Attrs, Color, FontSystem, Metrics, Resolution, SwashCache, TextArea, TextAtlas, TextBounds,
-    TextRenderer, Viewport,
+    Attrs, Color, FontSystem, SwashCache, TextArea, TextAtlas, TextBounds, TextRenderer, Viewport,
 };
 
 use super::Renderer;
@@ -326,14 +325,13 @@ impl Visualizer {
         let human_time = now.format("%A\n%I:%M:%S %p").to_string();
 
         text_buf.set_text(
-            &mut font_system,
             &human_time,
             &Attrs::new().family(glyphon::Family::Name("Zen Dots")),
             glyphon::Shaping::Advanced,
             Some(glyphon::cosmic_text::Align::Center),
         );
 
-        text_buf.set_size(&mut font_system, Some(1024.0), Some(1024.0));
+        text_buf.set_size(Some(1024.0), Some(1024.0));
         text_buf.shape_until_scroll(&mut font_system, false);
 
         let text_height = text_buf.layout_runs().count() as f32 * text_buf.metrics().line_height;
@@ -492,7 +490,6 @@ impl Visualizer {
 
             // 4. Set Rich Text with the new middle line
             text_buf.set_rich_text(
-                &mut self.font_system,
                 [
                     (day_string.as_str(), day_attrs),
                     (date_string.as_str(), date_attrs),
@@ -504,7 +501,7 @@ impl Visualizer {
             );
 
             // 5. Setup Layout & Alignment
-            text_buf.set_size(&mut self.font_system, Some(1024.0), Some(1024.0));
+            text_buf.set_size(Some(1024.0), Some(1024.0));
 
             for line in text_buf.lines.iter_mut() {
                 line.set_align(Some(glyphon::cosmic_text::Align::Center));
@@ -653,7 +650,7 @@ impl Visualizer {
 
         self.renderer.queue.submit(Some(encoder.finish()));
 
-        frame.present();
+        self.renderer.queue.present(frame);
     }
 }
 

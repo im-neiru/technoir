@@ -1,19 +1,38 @@
+mod id;
 mod library_file;
 
 use super::{CleanupContext, PrepareContext, Screen, WallpaperProvider};
 use indexmap::IndexMap;
 use libloading::{Library, Symbol};
+use rapidhash::RapidHashMap;
 use std::path::Path;
 
+pub use id::WallpaperId;
+
 pub struct WallpaperLoader {
-    libraries: IndexMap<String, Library>,
+    wallpapers: RapidHashMap<WallpaperId, Wallpaper>,
+}
+
+struct Wallpaper {
+    id: WallpaperId,
+    name: Box<str>,
+    path: Box<Path>,
+    library: Option<Library>,
 }
 
 impl WallpaperLoader {
-    pub fn new() -> Self {
-        Self {
-            libraries: IndexMap::new(),
+    pub fn new(path: impl AsRef<Path>) -> Self {
+        let library_file =
+            library_file::LibraryFile::load(path).expect("Failed to load library file");
+
+        let mut libraries = IndexMap::new();
+
+        for (name, path) in library_file.iter() {
+            let lib = unsafe { Library::new(path).expect("Failed to load library") };
+            libraries.insert(name.to_string(), lib);
         }
+
+        Self { libraries }
     }
 
     pub fn load(

@@ -1,7 +1,7 @@
 use rapidhash::RapidHashMap;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct Pipelines(pub RapidHashMap<String, Pipeline>);
 
@@ -15,7 +15,7 @@ impl Pipelines {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Pipeline {
     /// Shader path relative to the plugin's `shaders/` directory.
     pub shader: String,
@@ -67,7 +67,7 @@ fn default_targets() -> Vec<Option<ColorTarget>> {
 // Entry points
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct EntryPoints {
     #[serde(default)]
     pub vertex: Option<String>,
@@ -80,7 +80,7 @@ pub struct EntryPoints {
 // Vertex buffers
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct VertexBuffer {
     /// Vertex-buffer slot.
     pub slot: u32,
@@ -96,7 +96,7 @@ pub struct VertexBuffer {
     pub attributes: Vec<VertexAttribute>,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub enum StepMode {
     #[default]
     Vertex,
@@ -104,7 +104,7 @@ pub enum StepMode {
     Instance,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct VertexAttribute {
     /// Physical format in GPU memory.
     pub format: VertexFormat,
@@ -116,7 +116,7 @@ pub struct VertexAttribute {
     pub shader_location: u32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum VertexFormat {
     Uint8,
     Uint8x2,
@@ -177,7 +177,7 @@ pub enum VertexFormat {
 // Color targets
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 pub struct ColorTarget {
     /// Blend behavior.
     #[serde(default)]
@@ -188,7 +188,7 @@ pub struct ColorTarget {
     pub write_mask: WriteMask,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum BlendState {
     Preset(BlendPreset),
@@ -201,7 +201,7 @@ impl Default for BlendState {
     }
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub enum BlendPreset {
     /// Blending disabled; source replaces destination.
     #[default]
@@ -220,20 +220,20 @@ pub enum BlendPreset {
     Replace,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CustomBlendState {
     pub color: BlendComponent,
     pub alpha: BlendComponent,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BlendComponent {
     pub src_factor: BlendFactor,
     pub dst_factor: BlendFactor,
     pub operation: BlendOperation,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum BlendFactor {
     Zero,
     One,
@@ -254,7 +254,7 @@ pub enum BlendFactor {
     OneMinusSrc1Alpha,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum BlendOperation {
     Add,
     Subtract,
@@ -289,13 +289,25 @@ impl<'de> Deserialize<'de> for WriteMask {
                 "None" => Ok(Self::None),
                 _ => Err(serde::de::Error::unknown_variant(&value, &["All", "None"])),
             },
-
             Repr::Channels(channels) => Ok(Self::Channels(channels)),
         }
     }
 }
 
-#[derive(Debug, Deserialize)]
+impl Serialize for WriteMask {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Self::All => serializer.serialize_str("All"),
+            Self::None => serializer.serialize_str("None"),
+            Self::Channels(channels) => channels.serialize(serializer),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub enum ColorChannel {
     Red,
     Green,
@@ -307,7 +319,7 @@ pub enum ColorChannel {
 // Primitive state
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 pub struct PrimitiveState {
     /// How vertices are assembled.
     ///
@@ -350,7 +362,7 @@ pub struct PrimitiveState {
     pub conservative: bool,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub enum PrimitiveTopology {
     PointList,
     LineList,
@@ -362,13 +374,13 @@ pub enum PrimitiveTopology {
     TriangleStrip,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum IndexFormat {
     Uint16,
     Uint32,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub enum FrontFace {
     #[default]
     Ccw,
@@ -376,7 +388,7 @@ pub enum FrontFace {
     Cw,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub enum CullMode {
     #[default]
     None,
@@ -385,7 +397,7 @@ pub enum CullMode {
     Back,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub enum PolygonMode {
     #[default]
     Fill,
@@ -398,7 +410,7 @@ pub enum PolygonMode {
 // Depth / stencil
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 pub struct DepthStencilState {
     /// Depth/stencil attachment format.
     ///
@@ -424,7 +436,7 @@ pub struct DepthStencilState {
     pub bias: DepthBiasState,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub enum TextureFormat {
     Stencil8,
 
@@ -438,7 +450,7 @@ pub enum TextureFormat {
     Depth32FloatStencil8,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DepthState {
     /// Whether passing fragments update the depth buffer.
     #[serde(default = "default_depth_write_enabled")]
@@ -462,7 +474,7 @@ impl Default for DepthState {
     }
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub enum CompareFunction {
     Never,
     Less,
@@ -481,7 +493,7 @@ pub enum CompareFunction {
 // Stencil
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct StencilState {
     /// State for front-facing primitives.
     #[serde(default)]
@@ -515,7 +527,7 @@ impl Default for StencilState {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct StencilFaceState {
     #[serde(default)]
     pub compare: CompareFunction,
@@ -541,7 +553,7 @@ impl Default for StencilFaceState {
     }
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub enum StencilOperation {
     #[default]
     Keep,
@@ -559,7 +571,7 @@ pub enum StencilOperation {
 // Depth bias
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DepthBiasState {
     /// Constant depth bias.
     #[serde(default)]
@@ -588,7 +600,7 @@ impl Default for DepthBiasState {
 // Multisampling
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct MultisampleState {
     /// Number of samples per pixel.
     ///

@@ -48,6 +48,11 @@ impl super::Context {
 
 impl TargetSurface {
     #[inline]
+    pub(crate) fn acquire_view(&self) -> &TextureView {
+        &self.view
+    }
+
+    #[inline]
     pub fn resize(&mut self, context: &super::Context, width: NonZeroU16, height: NonZeroU16) {
         let size = Extent3d {
             width: width.get() as u32,

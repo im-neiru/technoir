@@ -25,7 +25,7 @@ toml.workspace = true
 wasapi.workspace = true
 wgpu.workspace = true
 libloading.workspace = true
-chrono = "0.4.44"
+chrono.workspace = true
 
 ui.path = "../ui"
 wgsl-shaders = { path = "../wallpapers/wgsl" }

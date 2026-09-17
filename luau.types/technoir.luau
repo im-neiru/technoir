@@ -10,6 +10,6 @@ export type Wallpaper = {
     draw: (self: Wallpaper, ctx: WallpaperDrawContext) -> (),
 }
 
-export type WallpaperProvider = {
+export type WallpaperFactory = {
     init: (ctx: WallpaperInitContext) -> Wallpaper,
 }

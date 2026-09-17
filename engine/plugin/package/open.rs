@@ -4,7 +4,7 @@ use std::{
 };
 
 use image::EncodableLayout;
-use mlua::{Lua, Table};
+use mlua::{Function, Lua, Table};
 use zip::ZipArchive;
 
 use crate::{plugin::factory::PluginFactory, utils::ReadMappedFile};
@@ -37,7 +37,7 @@ impl PluginPackage {
         let instance_name = manifest.plugin.id.replace('.', "_");
 
         let lua = Lua::new();
-        let table: Table = lua
+        let init: Function = lua
             .load(code.as_bytes())
             .set_name(instance_name)
             .eval()
@@ -45,7 +45,7 @@ impl PluginPackage {
 
         Some(PluginFactory {
             lua,
-            table,
+            init,
             kind: manifest.plugin.plugin_type,
         })
     }

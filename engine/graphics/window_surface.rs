@@ -1,14 +1,10 @@
 use core::num::NonZeroU16;
 
-use wgpu::{
-    CurrentSurfaceTexture, Surface, SurfaceConfiguration, SurfaceTexture, TextureView,
-    TextureViewDescriptor,
-};
+use wgpu::{CurrentSurfaceTexture, Surface, SurfaceConfiguration, SurfaceTexture};
 
 pub(crate) struct WindowSurface {
     pub(crate) surface: Surface<'static>,
     pub(crate) config: SurfaceConfiguration,
-    current_frame: Option<SurfaceTexture>,
 }
 
 impl WindowSurface {
@@ -25,17 +21,7 @@ impl WindowSurface {
     }
 
     #[inline(always)]
-    pub(crate) fn acquire_view(&mut self, context: &super::Context) -> Option<TextureView> {
-        let frame = self.try_acquire(context)?;
-        let view = frame.texture.create_view(&TextureViewDescriptor::default());
-
-        self.current_frame = Some(frame);
-
-        Some(view)
-    }
-
-    #[inline(always)]
-    fn try_acquire(&mut self, context: &super::Context) -> Option<SurfaceTexture> {
+    pub fn try_acquire(&mut self, context: &super::Context) -> Option<SurfaceTexture> {
         match self.surface.get_current_texture() {
             CurrentSurfaceTexture::Success(txt) | CurrentSurfaceTexture::Suboptimal(txt) => {
                 Some(txt)
@@ -55,13 +41,6 @@ impl WindowSurface {
             CurrentSurfaceTexture::Occluded => None,
 
             CurrentSurfaceTexture::Validation => None,
-        }
-    }
-
-    #[inline(always)]
-    pub(crate) fn present(&mut self, context: &super::Context) {
-        if let Some(frame) = self.current_frame.take() {
-            context.queue.present(frame);
         }
     }
 }

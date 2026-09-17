@@ -33,9 +33,11 @@ pub(super) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
             DispatchMessageW(&msg);
         }
 
+        println("HELLO1");
         driver.poll_desktop_state();
 
         fft.poll();
+        println("HELLO2");
         let elapsed = ref_time.elapsed().as_secs_f32();
 
         for screen in &mut driver.screens {

@@ -47,12 +47,6 @@ impl WallpaperRenderer {
             })
             .await?;
 
-        for s in screens {
-            if let Some(target) = s.target.as_mut() {
-                target.configure(&device, &adapter);
-            }
-        }
-
         Ok(Self {
             device,
             queue,

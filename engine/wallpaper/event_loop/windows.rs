@@ -25,8 +25,8 @@ pub(crate) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
         }
     }
 
-    // let ref_time = std::time::Instant::now();
-    // let mut fft = crate::SpectrumAudioLoopback::new();
+    let ref_time = std::time::Instant::now();
+    let mut fft = crate::SpectrumAudioLoopback::new();
 
     let mut msg = mem::zeroed();
 
@@ -42,16 +42,16 @@ pub(crate) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
 
         driver.poll_desktop_state();
 
-        // fft.poll();
-        // let elapsed = ref_time.elapsed().as_secs_f32();
+        fft.poll();
+        let elapsed = ref_time.elapsed().as_secs_f32();
 
-        // for screen in &mut driver.screens {
-        //     if !screen.is_filled
-        //         && let Some(target) = screen.target.as_mut()
-        //     {
-        //         target.visualizer.render(&mut fft, elapsed);
-        //     }
-        // }
+        for screen in &mut driver.screens {
+            if !screen.is_filled
+                && let Some(target) = screen.target.as_mut()
+            {
+                target.visualizer.render(&mut fft, elapsed);
+            }
+        }
 
         Sleep(17);
     }

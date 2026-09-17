@@ -8,7 +8,6 @@ use raw_window_handle::{
     RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle,
 };
 
-use wgpu::{Surface, SurfaceConfiguration};
 use windows_sys::Win32::{
     Foundation::{ERROR_CLASS_ALREADY_EXISTS, GetLastError},
     UI::WindowsAndMessaging::*,
@@ -21,12 +20,11 @@ pub struct WallpaperTarget {
     hinstance: NonNull<c_void>,
     classname: [u16; 96],
 
-    pub(in crate::wallpaper) wgpu_surface: Surface<'static>,
-    pub(in crate::wallpaper) config: SurfaceConfiguration,
+    pub(in crate::wallpaper) visualizer: crate::Visualizer,
 }
 
 impl WallpaperTarget {
-    pub(in crate::wallpaper) fn new(
+    pub(in crate::wallpaper) async fn new(
         screen_name: &str,
         bounds: &ScreenBounds,
         hinstance: NonNull<c_void>,
@@ -112,53 +110,20 @@ impl WallpaperTarget {
 
             ShowWindow(hwnd.as_ptr(), SW_HIDE);
 
-            // Default should be replaced when the wgpu::Adapter is retrieved
-            let config = wgpu::SurfaceConfiguration {
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                width,
-                height,
-                present_mode: wgpu::PresentMode::AutoVsync,
-                alpha_mode: wgpu::CompositeAlphaMode::Auto,
-                view_formats: vec![],
-                desired_maximum_frame_latency: 2,
-                color_space: wgpu::SurfaceColorSpace::Srgb,
-            };
+            let visualizer = crate::Visualizer::new(wgpu_instance, wgpu_surface, width, height).await;
 
             Self {
                 hwnd,
                 hinstance,
                 classname,
-                wgpu_surface,
-                config,
+                visualizer,
             }
         }
     }
 
-    pub(in crate::wallpaper) fn configure(
-        &mut self,
-        device: &wgpu::Device,
-        adapter: &wgpu::Adapter,
-    ) {
-        let caps = self.wgpu_surface.get_capabilities(adapter);
-
-        let format = caps
-            .formats
-            .iter()
-            .copied()
-            .find(|f| *f == wgpu::TextureFormat::Rgba8Unorm)
-            .unwrap_or(caps.formats[0]);
-
-        self.config.format = format;
-
-        self.wgpu_surface.configure(device, &self.config);
-    }
-
     #[inline]
-    pub(crate) fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
-        self.config.width = width;
-        self.config.height = height;
-        self.wgpu_surface.configure(device, &self.config);
+    pub(crate) fn resize(&mut self, width: u32, height: u32) {
+        self.visualizer.resize(width, height);
     }
 
     fn build_classname(screen_name: &str) -> [u16; 96] {

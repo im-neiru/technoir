@@ -48,15 +48,11 @@ impl WallpaperDriver {
     }
 
     pub(in crate::wallpaper) fn resize_target(&mut self, hwnd: HWND, width: u32, height: u32) {
-        let Some(renderer) = self.renderer.as_ref() else {
-            return;
-        };
-
         for s in self.screens.iter_mut() {
             if let Some(target) = s.target.as_mut()
                 && target.hwnd.as_ptr() == hwnd
             {
-                target.resize(&renderer.device, width, height);
+                target.resize(width, height);
             }
         }
     }
@@ -92,18 +88,13 @@ impl WallpaperDriver {
 
         self.watcher = Some(DesktopWatcher::new().expect("Failed to create desktop watcher"));
 
-        let renderer = smol::block_on(async {
-            WallpaperRenderer::new(&self.instance, None, self.screens.as_mut_slice()).await
-        })
-        .unwrap();
-
-        self.renderer = Some(renderer);
-
         let desktop_handles = get_desktop_handles();
         let parent = desktop_handles.get_target_parent();
 
         for s in self.screens.iter_mut() {
-            s.spawn_target(hinstance, parent, &self.instance);
+            smol::block_on(async {
+                s.spawn_target(hinstance, parent, &self.instance).await;
+            });
         }
 
         unsafe { enter_loop(self) }

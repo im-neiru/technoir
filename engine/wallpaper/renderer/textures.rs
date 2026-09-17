@@ -9,7 +9,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{SPI_GETDESKWALLPAPER, SystemPa
 pub struct TextureIndex(usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum TextureKey {
+pub(super) enum TextureKey {
     SystemWallpaper,
     GrainNoise,
 }

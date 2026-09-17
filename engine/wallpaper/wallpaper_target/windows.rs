@@ -19,7 +19,7 @@ use crate::{
     wallpaper::{ScreenBounds, WallpaperDriver, event_loop::window_proc},
 };
 
-pub struct WallpaperTarget {
+pub(in crate::wallpaper) struct WallpaperTarget {
     pub(in crate::wallpaper) hwnd: NonNull<c_void>,
     hinstance: NonNull<c_void>,
     classname: [u16; 96],
@@ -126,7 +126,7 @@ impl WallpaperTarget {
     }
 
     #[inline]
-    pub(crate) fn resize(&mut self, context: &Context) {
+    pub(in crate::wallpaper) fn resize(&mut self, context: &Context) {
         let (width, height) = unsafe {
             let mut rect = mem::zeroed();
 

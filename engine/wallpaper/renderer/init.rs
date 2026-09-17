@@ -63,9 +63,9 @@ impl super::WallpaperRenderer {
     }
 }
 
-pub struct PreferedDeviceKey {
-    pub name: String,
-    pub vendor_id: u32,
-    pub device_id: u32,
-    pub backend: Backend,
+pub(in crate::wallpaper) struct PreferedDeviceKey {
+    pub(in crate::wallpaper) name: String,
+    pub(in crate::wallpaper) vendor_id: u32,
+    pub(in crate::wallpaper) device_id: u32,
+    pub(in crate::wallpaper) backend: Backend,
 }

@@ -22,9 +22,9 @@ use crate::{
     },
 };
 
-pub struct WallpaperDriver {
+pub(crate) struct WallpaperDriver {
     pub(in crate::wallpaper) screens: Vec<Screen>,
-    pub(crate) graphics: Context,
+    graphics: Context,
     renderer: Option<WallpaperRenderer>,
     watcher: Option<DesktopWatcher>,
     worker: HANDLE,
@@ -58,7 +58,7 @@ impl WallpaperDriver {
         }
     }
 
-    pub fn run(&mut self) {
+    pub(crate) fn run(&mut self) {
         if !self.worker.is_null() {
             return;
         };
@@ -107,7 +107,7 @@ impl WallpaperDriver {
         0
     }
 
-    pub fn terminate(&mut self) {
+    pub(crate) fn terminate(&mut self) {
         if self.worker.is_null() {
             return;
         };
@@ -127,7 +127,7 @@ impl WallpaperDriver {
     }
 
     #[inline]
-    pub fn poll_desktop_state(&mut self) {
+    pub(in crate::wallpaper) fn poll_desktop_state(&mut self) {
         let Some(watcher) = self.watcher.as_ref() else {
             return;
         };

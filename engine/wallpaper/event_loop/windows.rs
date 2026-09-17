@@ -11,10 +11,10 @@ use windows_sys::Win32::{
 
 use crate::wallpaper::WallpaperDriver;
 
-pub(crate) const WM_APP_TERMINATE: u32 = WM_APP + 1;
+pub(in crate::wallpaper) const WM_APP_TERMINATE: u32 = WM_APP + 1;
 
 #[allow(unsafe_op_in_unsafe_fn)]
-pub(crate) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
+pub(in crate::wallpaper) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
     {
         let ptr = unsafe { NonNull::new_unchecked(driver) };
 
@@ -44,7 +44,7 @@ pub(crate) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
 }
 
 #[allow(unsafe_op_in_unsafe_fn)]
-pub(crate) unsafe extern "system" fn window_proc(
+pub(in crate::wallpaper) unsafe extern "system" fn window_proc(
     hwnd: HWND,
     msg: u32,
     wparam: WPARAM,

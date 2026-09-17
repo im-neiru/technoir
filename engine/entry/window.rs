@@ -41,12 +41,16 @@ impl Entry {
     }
 
     pub fn run(mut self) {
-        // test only
-        smol::block_on(self.plugin_loader.load_wallpaper());
+        // // test only
+        // smol::block_on(self.plugin_loader.load_wallpaper());
         smol::block_on(async {
-            let packager = Packager::release_mode();
+            // let packager = Packager::release_mode();
 
-            packager.pack("./sandbox/wallpaper", None).await;
+            // packager.pack("./sandbox/wallpaper", None).await;
+
+            let v = self.plugin_loader.enumerate_plugins().await;
+
+            println!("{:#?}", v.as_ref());
         });
 
         self.wallpaper_driver.run();

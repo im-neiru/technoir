@@ -25,9 +25,6 @@ pub(crate) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
         }
     }
 
-    let ref_time = std::time::Instant::now();
-    let mut fft = crate::SpectrumAudioLoopback::new();
-
     let mut msg = mem::zeroed();
 
     'outer: loop {
@@ -41,17 +38,6 @@ pub(crate) unsafe fn enter_loop(driver: &mut WallpaperDriver) {
         }
 
         driver.poll_desktop_state();
-
-        fft.poll();
-        let elapsed = ref_time.elapsed().as_secs_f32();
-
-        for screen in &mut driver.screens {
-            if !screen.is_filled
-                && let Some(target) = screen.target.as_mut()
-            {
-                target.visualizer.render(&mut fft, elapsed);
-            }
-        }
 
         Sleep(17);
     }
@@ -79,13 +65,7 @@ pub(crate) unsafe extern "system" fn window_proc(
         }
         WM_CLOSE => 0,
         WM_SIZE => {
-            let _width = (lparam & 0xFFFF) as u32;
-            let _height = (lparam >> 16) as u32;
-
-            let width = (lparam & 0xFFFF) as u32;
-            let height = (lparam >> 16) as u32;
-
-            driver.resize_target(hwnd, width, height);
+            driver.resize_target(hwnd);
 
             0
         }

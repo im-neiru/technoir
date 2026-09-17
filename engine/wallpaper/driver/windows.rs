@@ -48,12 +48,12 @@ impl WallpaperDriver {
         }
     }
 
-    pub(in crate::wallpaper) fn resize_target(&mut self, hwnd: HWND, width: u32, height: u32) {
+    pub(in crate::wallpaper) fn resize_target(&mut self, hwnd: HWND) {
         for s in self.screens.iter_mut() {
             if let Some(target) = s.target.as_mut()
                 && target.hwnd.as_ptr() == hwnd
             {
-                target.resize(width, height);
+                target.resize(&self.graphics);
             }
         }
     }
@@ -94,7 +94,7 @@ impl WallpaperDriver {
 
         for s in self.screens.iter_mut() {
             smol::block_on(async {
-                s.spawn_target(hinstance, parent, &self.instance).await;
+                s.spawn_target(hinstance, parent, &self.graphics).await;
             });
         }
 

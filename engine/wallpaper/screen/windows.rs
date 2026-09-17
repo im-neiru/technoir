@@ -73,7 +73,7 @@ impl Screen {
         &mut self,
         hinstance: NonNull<c_void>,
         parent: NonNull<c_void>,
-        wgpu_instance: &wgpu::Instance,
+        context: &crate::graphics::Context,
     ) {
         self.target = Some(
             WallpaperTarget::new(
@@ -81,7 +81,7 @@ impl Screen {
                 &self.bounds,
                 hinstance,
                 parent,
-                wgpu_instance,
+                context,
             )
             .await,
         );

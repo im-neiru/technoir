@@ -1,4 +1,4 @@
-use wgpu::{ShaderModule, ShaderModuleDescriptor};
+use wgpu::ShaderModule;
 
 pub use wgsl_shaders::ShaderSource;
 

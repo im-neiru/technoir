@@ -25,8 +25,6 @@ pub struct WallpaperTarget {
     classname: [u16; 96],
 
     pub(in crate::wallpaper) surface: WindowSurface,
-    // old:
-    // pub(in crate::wallpaper) visualizer: crate::Visualizer,
 }
 
 impl WallpaperTarget {
@@ -92,10 +90,10 @@ impl WallpaperTarget {
                 SWP_SHOWWINDOW | SWP_NOACTIVATE,
             );
 
-            let (width, height) = unsafe {
+            let (width, height) = {
                 let mut rect = mem::zeroed();
 
-                GetClientRect(self.hwnd.as_ptr() as _, &mut rect);
+                GetClientRect(hwnd.as_ptr() as _, &mut rect);
 
                 (
                     NonZeroU16::new_unchecked((rect.right - rect.left).max(1) as u16),
@@ -118,15 +116,11 @@ impl WallpaperTarget {
 
             ShowWindow(hwnd.as_ptr(), SW_HIDE);
 
-            // let visualizer =
-            //     crate::Visualizer::new(wgpu_instance, wgpu_surface, width, height).await;
-
             Self {
                 hwnd,
                 hinstance,
                 classname,
                 surface,
-                // visualizer,
             }
         }
     }

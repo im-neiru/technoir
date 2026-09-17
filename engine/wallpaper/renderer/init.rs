@@ -42,7 +42,7 @@ impl super::WallpaperRenderer {
 
             for screen in screens {
                 if let Some(target) = &screen.target {
-                    if !adapter.is_surface_supported(&target.visualizer.renderer.surface) {
+                    if !adapter.is_surface_supported(&target.surface.surface) {
                         surface_score = i32::MIN;
                         break;
                     }

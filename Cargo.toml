@@ -43,6 +43,7 @@ windows-sys = { version = "0.61.2", features = [
     "Win32_UI_WindowsAndMessaging",
 ] }
 libloading = "0.9.0"
+zip = { version = "8.6.0", default-features = false, features = ["zstd"] }
 
 [profile.release]
 opt-level = 3

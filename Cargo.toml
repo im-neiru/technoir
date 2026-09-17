@@ -15,6 +15,7 @@ rand = "0.10.2"
 rapidhash = "4.4.1"
 raw-window-handle = "0.6.2"
 rustfft = "6.4.1"
+semver = { version = "1.0.28", features = ["serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
 smol = "2.0.2"
 thiserror = "2.0.18"

@@ -455,9 +455,7 @@ impl Visualizer {
     }
 
     pub fn render(&mut self, audio: &mut SpectrumAudioLoopback, time: f32) {
-        println!("RENDER");
         let Some(frame) = self.renderer.begin_frame() else {
-            println!("HMM");
             return;
         };
 

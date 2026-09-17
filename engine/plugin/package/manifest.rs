@@ -13,6 +13,9 @@ pub struct Plugin {
     /// Human-readable plugin name.
     pub name: String,
 
+    /// Globally unique reverse-domain-style plugin identifier.
+    pub id: String,
+
     /// Plugin's own semantic version.
     pub version: Version,
 

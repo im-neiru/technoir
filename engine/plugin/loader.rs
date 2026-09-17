@@ -18,7 +18,7 @@ impl PluginLoader {
     #[inline]
     pub(crate) async fn load_wallpaper(&self) {
         // for testing
-        let file = fs::File::open("luau_sample/init.luau").await.unwrap();
+        let file = fs::File::open("sandbox/wallpaper/main.luau").await.unwrap();
 
         let module = self.load_module(file).await;
 

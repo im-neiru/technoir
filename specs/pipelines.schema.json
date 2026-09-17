@@ -1,35 +1,209 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Wallpaper Engine Pipeline Schema",
+  "title": "Technoir Wallpaper Engine Pipeline Schema",
   "type": "object",
+  "description": "Render pipeline configurations. Each property name is the pipeline label used by the engine.",
+  "additionalProperties": false,
   "patternProperties": {
     "^[a-zA-Z0-9_]+$": {
       "type": "object",
-      "description": "Render pipeline configuration",
-      "required": [
-        "shader"
-      ],
+      "description": "Render pipeline configuration. Shader interfaces and pipeline layout are inspected from the shader by the engine; this configuration describes fixed-function state and information Naga cannot determine from the shader alone.",
       "additionalProperties": false,
+      "required": [
+        "shader",
+        "vertex_buffers",
+        "targets",
+        "primitive"
+      ],
       "properties": {
         "shader": {
           "type": "string",
-          "description": "Path to the WGSL or WESL shader file relative to the plugin's 'shaders/' directory (e.g., 'wallpaper.wgsl' or 'subfolder/effect.wgsl')."
+          "minLength": 1,
+          "description": "Path to the WGSL or WESL shader file relative to the plugin's shaders/ directory."
         },
         "entry_points": {
           "type": "object",
-          "description": "Explicit entry point functions inside the shader module.",
+          "description": "Explicit shader entry points. Omit this when the shader contains exactly one entry point for each required stage; the engine will select those automatically.",
           "additionalProperties": false,
           "properties": {
             "vertex": {
               "type": "string",
-              "description": "Name of the vertex shader entry point function."
+              "minLength": 1,
+              "description": "Vertex-stage entry point. Normally omitted when Naga finds exactly one vertex entry point."
             },
             "fragment": {
               "type": "string",
-              "description": "Name of the fragment shader entry point function."
+              "minLength": 1,
+              "description": "Fragment-stage entry point. Normally omitted when Naga finds exactly one fragment entry point."
             }
           }
         },
+        "constants": {
+          "type": "object",
+          "description": "Values for pipeline-overridable shader constants. A key is either the constant identifier or the decimal @id value assigned to the constant. Naga can determine which constants exist, but cannot determine which value this pipeline intends to use.",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^(?:[A-Za-z_][A-Za-z0-9_]*|[0-9]+)$": {
+              "type": "number",
+              "description": "Concrete scalar value supplied to the shader when the pipeline is compiled."
+            }
+          }
+        },
+        "vertex_buffers": {
+          "type": "array",
+          "description": "Actual memory layouts of vertex buffers. This is required because shader reflection can determine vertex input locations and types, but cannot determine the CPU/GPU buffer stride, attribute byte offsets, buffer slot, or whether a buffer advances per vertex or per instance. Use [] when the vertex shader does not consume vertex-buffer inputs.",
+          "items": {
+            "$ref": "#/definitions/VertexBuffer"
+          }
+        },
+        "targets": {
+          "type": "array",
+          "description": "Color-target state for fragment outputs. The engine supplies the actual attachment format from the host render target. The number and locations of fragment outputs are validated against the shader. Use [] for a vertex-only/depth-only pipeline.",
+          "items": {
+            "oneOf": [
+              {
+                "type": "null",
+                "description": "No color attachment is used at this target slot."
+              },
+              {
+                "$ref": "#/definitions/ColorTarget"
+              }
+            ]
+          }
+        },
+        "primitive": {
+          "$ref": "#/definitions/PrimitiveState"
+        },
+        "depth_stencil": {
+          "$ref": "#/definitions/DepthStencilState"
+        },
+        "multisample": {
+          "$ref": "#/definitions/MultisampleState"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "VertexBuffer": {
+      "type": "object",
+      "description": "Description of one vertex-buffer slot.",
+      "additionalProperties": false,
+      "required": [
+        "slot",
+        "array_stride",
+        "step_mode",
+        "attributes"
+      ],
+      "properties": {
+        "slot": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Vertex-buffer slot used by the render pass."
+        },
+        "array_stride": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Size in bytes of one vertex or instance record."
+        },
+        "step_mode": {
+          "type": "string",
+          "enum": [
+            "Vertex",
+            "Instance"
+          ],
+          "description": "Whether the buffer advances once for every vertex or once for every instance."
+        },
+        "attributes": {
+          "type": "array",
+          "description": "Attributes contained in this buffer.",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/VertexAttribute"
+          }
+        }
+      }
+    },
+    "VertexAttribute": {
+      "type": "object",
+      "description": "One vertex attribute mapped to a shader input location.",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "offset",
+        "shader_location"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "Uint8",
+            "Uint8x2",
+            "Uint8x4",
+            "Sint8",
+            "Sint8x2",
+            "Sint8x4",
+            "Unorm8",
+            "Unorm8x2",
+            "Unorm8x4",
+            "Snorm8",
+            "Snorm8x2",
+            "Snorm8x4",
+            "Uint16",
+            "Uint16x2",
+            "Uint16x4",
+            "Sint16",
+            "Sint16x2",
+            "Sint16x4",
+            "Unorm16",
+            "Unorm16x2",
+            "Unorm16x4",
+            "Snorm16",
+            "Snorm16x2",
+            "Snorm16x4",
+            "Float16",
+            "Float16x2",
+            "Float16x4",
+            "Float32",
+            "Float32x2",
+            "Float32x3",
+            "Float32x4",
+            "Uint32",
+            "Uint32x2",
+            "Uint32x3",
+            "Uint32x4",
+            "Sint32",
+            "Sint32x2",
+            "Sint32x3",
+            "Sint32x4",
+            "Float64",
+            "Float64x2",
+            "Float64x3",
+            "Float64x4",
+            "Unorm10_10_10_2",
+            "Unorm8x4Bgra"
+          ],
+          "description": "Physical vertex-attribute format in GPU memory. This must be compatible with the reflected shader input type."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Byte offset of this attribute from the beginning of one vertex or instance record."
+        },
+        "shader_location": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Shader input location consumed by the vertex entry point."
+        }
+      }
+    },
+    "ColorTarget": {
+      "type": "object",
+      "description": "Fixed-function state for one color output. The render-target format is selected by the host and is not configured here.",
+      "additionalProperties": false,
+      "required": [
+        "blend"
+      ],
+      "properties": {
         "blend": {
           "oneOf": [
             {
@@ -37,187 +211,357 @@
               "enum": [
                 "Opaque",
                 "Alpha",
+                "PremultipliedAlpha",
                 "Additive",
                 "Replace"
               ],
-              "description": "Preset blend mode applied to the color attachment."
+              "description": "Named blend behavior. Opaque performs an overwrite with blending disabled; Alpha is conventional straight-alpha blending; PremultipliedAlpha assumes premultiplied color; Additive accumulates source color; Replace uses an explicit replace blend state."
             },
             {
-              "$ref": "#/$defs/CustomBlendState"
+              "$ref": "#/definitions/CustomBlendState"
             }
           ]
         },
-        "primitive": {
-          "type": "object",
-          "description": "Rasterization state for primitive assembly.",
-          "additionalProperties": false,
-          "properties": {
-            "topology": {
+        "write_mask": {
+          "oneOf": [
+            {
               "type": "string",
               "enum": [
-                "PointList",
-                "LineList",
-                "LineStrip",
-                "TriangleList",
-                "TriangleStrip"
-              ],
-              "default": "TriangleList",
-              "description": "Primitive topology used to render geometry."
+                "All",
+                "None"
+              ]
             },
-            "front_face": {
-              "type": "string",
-              "enum": [
-                "Ccw",
-                "Cw"
-              ],
-              "default": "Ccw",
-              "description": "Winding order defining front-facing triangles."
-            },
-            "cull_mode": {
-              "type": "string",
-              "enum": [
-                "None",
-                "Front",
-                "Back"
-              ],
-              "default": "None",
-              "description": "Face culling mode."
-            },
-            "polygon_mode": {
-              "type": "string",
-              "enum": [
-                "Fill",
-                "Line",
-                "Point"
-              ],
-              "default": "Fill",
-              "description": "Rasterization mode (requires non-standard GPU features for Line/Point)."
-            },
-            "unclipped_depth": {
-              "type": "boolean",
-              "default": false,
-              "description": "Disables depth clipping against near/far planes."
-            },
-            "conservative": {
-              "type": "boolean",
-              "default": false,
-              "description": "Enables conservative rasterization."
+            {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "Red",
+                  "Green",
+                  "Blue",
+                  "Alpha"
+                ]
+              }
             }
-          }
-        },
-        "depth_stencil": {
-          "type": "object",
-          "description": "Depth and stencil testing configuration.",
-          "required": [
-            "format"
           ],
-          "additionalProperties": false,
-          "properties": {
-            "format": {
-              "type": "string",
-              "enum": [
-                "Depth32Float",
-                "Depth24Plus",
-                "Depth24PlusStencil8",
-                "Depth32FloatStencil8",
-                "Depth16Unorm"
-              ],
-              "description": "Texture format of the depth-stencil attachment."
-            },
-            "depth_write_enabled": {
-              "type": "boolean",
-              "default": true,
-              "description": "Enables writing to the depth buffer."
-            },
-            "depth_compare": {
-              "type": "string",
-              "enum": [
-                "Never",
-                "Less",
-                "Equal",
-                "LessEqual",
-                "Greater",
-                "NotEqual",
-                "GreaterEqual",
-                "Always"
-              ],
-              "default": "LessEqual",
-              "description": "Comparison function used to evaluate depth testing."
-            }
-          }
-        },
-        "multisample": {
-          "type": "object",
-          "description": "Multisampling / Anti-Aliasing parameters.",
-          "additionalProperties": false,
-          "properties": {
-            "count": {
-              "type": "integer",
-              "enum": [
-                1,
-                2,
-                4,
-                8,
-                16
-              ],
-              "default": 1,
-              "description": "Number of MSAA samples per pixel."
-            },
-            "mask": {
-              "type": "integer",
-              "default": 4294967295,
-              "description": "Bitmask controlling sample coverage."
-            },
-            "alpha_to_coverage_enabled": {
-              "type": "boolean",
-              "default": false,
-              "description": "Computes alpha coverage based on fragment alpha."
-            }
-          }
+          "description": "Color channels written by the fragment stage. Omission means all channels are written."
         }
       }
-    }
-  },
-  "$defs": {
-    "BlendComponent": {
+    },
+    "PrimitiveState": {
       "type": "object",
+      "description": "Primitive assembly and rasterization state. Topology is required because the shader does not determine whether the draw is interpreted as points, lines, or triangles.",
       "additionalProperties": false,
+      "required": [
+        "topology"
+      ],
       "properties": {
-        "src_factor": {
+        "topology": {
           "type": "string",
           "enum": [
-            "Zero",
-            "One",
-            "Src",
-            "OneMinusSrc",
-            "SrcAlpha",
-            "OneMinusSrcAlpha",
-            "Dst",
-            "OneMinusDst",
-            "DstAlpha",
-            "OneMinusDstAlpha",
-            "SrcAlphaSaturated",
-            "Constant",
-            "OneMinusConstant"
+            "PointList",
+            "LineList",
+            "LineStrip",
+            "TriangleList",
+            "TriangleStrip"
+          ],
+          "description": "How vertices supplied by the draw call are assembled into primitives."
+        },
+        "strip_index_format": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "Uint16",
+            "Uint32",
+            null
+          ],
+          "description": "Index format used for indexed strip primitives. Omit when drawing non-strip primitives or non-indexed strips."
+        },
+        "front_face": {
+          "type": "string",
+          "enum": [
+            "Ccw",
+            "Cw"
+          ],
+          "description": "Winding order considered front-facing. This becomes important when face culling is enabled."
+        },
+        "cull_mode": {
+          "type": "string",
+          "enum": [
+            "None",
+            "Front",
+            "Back"
+          ],
+          "description": "Faces discarded before fragment shading."
+        },
+        "unclipped_depth": {
+          "type": "boolean",
+          "description": "Allows depth values outside the normal clip range. Requires the host device feature for depth clip control."
+        },
+        "polygon_mode": {
+          "type": "string",
+          "enum": [
+            "Fill",
+            "Line",
+            "Point"
+          ],
+          "description": "Rasterization mode. Line and Point require corresponding host device features."
+        },
+        "conservative": {
+          "type": "boolean",
+          "description": "Enables conservative rasterization. Requires the corresponding host device feature and has additional primitive-mode restrictions."
+        }
+      }
+    },
+    "DepthStencilState": {
+      "type": "object",
+      "description": "Depth and/or stencil state. The depth/stencil attachment format must match the attachment selected by the host render pass.",
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "depth"
           ]
         },
-        "dst_factor": {
+        {
+          "required": [
+            "stencil"
+          ]
+        }
+      ],
+      "properties": {
+        "format": {
           "type": "string",
           "enum": [
+            "Stencil8",
+            "Depth16Unorm",
+            "Depth24Plus",
+            "Depth24PlusStencil8",
+            "Depth32Float",
+            "Depth32FloatStencil8"
+          ],
+          "description": "Depth/stencil attachment format. If the engine owns a fixed depth/stencil format, this field can be removed from the plugin-facing schema and supplied by the host instead."
+        },
+        "depth": {
+          "$ref": "#/definitions/DepthState"
+        },
+        "stencil": {
+          "$ref": "#/definitions/StencilState"
+        },
+        "bias": {
+          "$ref": "#/definitions/DepthBiasState"
+        }
+      }
+    },
+    "DepthState": {
+      "type": "object",
+      "description": "Depth-test state.",
+      "additionalProperties": false,
+      "required": [
+        "write_enabled",
+        "compare"
+      ],
+      "properties": {
+        "write_enabled": {
+          "type": "boolean",
+          "description": "Whether passing fragments write a new depth value."
+        },
+        "compare": {
+          "type": "string",
+          "enum": [
+            "Never",
+            "Less",
+            "Equal",
+            "LessEqual",
+            "Greater",
+            "NotEqual",
+            "GreaterEqual",
+            "Always"
+          ],
+          "description": "Comparison performed between the fragment depth and the existing depth value."
+        }
+      }
+    },
+    "StencilState": {
+      "type": "object",
+      "description": "Stencil-test and stencil-update state.",
+      "additionalProperties": false,
+      "required": [
+        "front",
+        "back"
+      ],
+      "properties": {
+        "front": {
+          "$ref": "#/definitions/StencilFaceState"
+        },
+        "back": {
+          "$ref": "#/definitions/StencilFaceState"
+        },
+        "read_mask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Mask applied to stencil values when reading. Only the low 8 bits are used."
+        },
+        "write_mask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Mask applied to stencil values when writing. Only the low 8 bits are used."
+        }
+      }
+    },
+    "StencilFaceState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compare",
+        "fail_op",
+        "depth_fail_op",
+        "pass_op"
+      ],
+      "properties": {
+        "compare": {
+          "type": "string",
+          "enum": [
+            "Never",
+            "Less",
+            "Equal",
+            "LessEqual",
+            "Greater",
+            "NotEqual",
+            "GreaterEqual",
+            "Always"
+          ],
+          "description": "Comparison used by the stencil test."
+        },
+        "fail_op": {
+          "type": "string",
+          "enum": [
+            "Keep",
             "Zero",
-            "One",
-            "Src",
-            "OneMinusSrc",
-            "SrcAlpha",
-            "OneMinusSrcAlpha",
-            "Dst",
-            "OneMinusDst",
-            "DstAlpha",
-            "OneMinusDstAlpha",
-            "SrcAlphaSaturated",
-            "Constant",
-            "OneMinusConstant"
-          ]
+            "Replace",
+            "Invert",
+            "IncrementClamp",
+            "DecrementClamp",
+            "IncrementWrap",
+            "DecrementWrap"
+          ],
+          "description": "Stencil operation performed when the stencil test fails."
+        },
+        "depth_fail_op": {
+          "type": "string",
+          "enum": [
+            "Keep",
+            "Zero",
+            "Replace",
+            "Invert",
+            "IncrementClamp",
+            "DecrementClamp",
+            "IncrementWrap",
+            "DecrementWrap"
+          ],
+          "description": "Stencil operation performed when stencil passes but the depth test fails."
+        },
+        "pass_op": {
+          "type": "string",
+          "enum": [
+            "Keep",
+            "Zero",
+            "Replace",
+            "Invert",
+            "IncrementClamp",
+            "DecrementClamp",
+            "IncrementWrap",
+            "DecrementWrap"
+          ],
+          "description": "Stencil operation performed when both applicable tests pass."
+        }
+      }
+    },
+    "DepthBiasState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "constant",
+        "slope_scale",
+        "clamp"
+      ],
+      "properties": {
+        "constant": {
+          "type": "integer",
+          "description": "Constant depth bias."
+        },
+        "slope_scale": {
+          "type": "number",
+          "description": "Slope-scaled depth bias."
+        },
+        "clamp": {
+          "type": "number",
+          "description": "Maximum absolute depth bias."
+        }
+      }
+    },
+    "MultisampleState": {
+      "type": "object",
+      "description": "Multisampling state. The sample count must match the render target created by the host.",
+      "additionalProperties": false,
+      "required": [
+        "count"
+      ],
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of samples calculated per pixel. Must match the render target and any resolve configuration."
+        },
+        "mask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615,
+          "description": "64-bit sample coverage mask."
+        },
+        "alpha_to_coverage_enabled": {
+          "type": "boolean",
+          "description": "Uses fragment alpha to determine sample coverage. Normally relevant only for multisampled rendering."
+        }
+      }
+    },
+    "CustomBlendState": {
+      "type": "object",
+      "description": "Explicit blend state. Factors using Constant or OneMinusConstant also require a host-side blend constant to be supplied during the render pass. Factors using Src1 require dual-source blending support and are restricted to the first render target.",
+      "additionalProperties": false,
+      "required": [
+        "color",
+        "alpha"
+      ],
+      "properties": {
+        "color": {
+          "$ref": "#/definitions/BlendComponent"
+        },
+        "alpha": {
+          "$ref": "#/definitions/BlendComponent"
+        }
+      }
+    },
+    "BlendComponent": {
+      "type": "object",
+      "description": "One color or alpha blend equation.",
+      "additionalProperties": false,
+      "required": [
+        "src_factor",
+        "dst_factor",
+        "operation"
+      ],
+      "properties": {
+        "src_factor": {
+          "$ref": "#/definitions/BlendFactor"
+        },
+        "dst_factor": {
+          "$ref": "#/definitions/BlendFactor"
         },
         "operation": {
           "type": "string",
@@ -227,26 +571,33 @@
             "ReverseSubtract",
             "Min",
             "Max"
-          ]
+          ],
+          "description": "Blend arithmetic operation."
         }
       }
     },
-    "CustomBlendState": {
-      "type": "object",
-      "description": "Explicit blend factors and operations.",
-      "required": [
-        "color",
-        "alpha"
+    "BlendFactor": {
+      "type": "string",
+      "enum": [
+        "Zero",
+        "One",
+        "Src",
+        "OneMinusSrc",
+        "SrcAlpha",
+        "OneMinusSrcAlpha",
+        "Dst",
+        "OneMinusDst",
+        "DstAlpha",
+        "OneMinusDstAlpha",
+        "SrcAlphaSaturated",
+        "Constant",
+        "OneMinusConstant",
+        "Src1",
+        "OneMinusSrc1",
+        "Src1Alpha",
+        "OneMinusSrc1Alpha"
       ],
-      "additionalProperties": false,
-      "properties": {
-        "color": {
-          "$ref": "#/$defs/BlendComponent"
-        },
-        "alpha": {
-          "$ref": "#/$defs/BlendComponent"
-        }
-      }
+      "description": "Blend factor. Src1-based factors require dual-source blending support and are only valid on the first render target."
     }
   }
 }

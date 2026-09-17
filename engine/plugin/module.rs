@@ -46,6 +46,9 @@ impl PluginLoader {
 
         let code = self.compiler.compile(&source).unwrap();
 
+        println!("-- SOURCE LEN : {}", source.len());
+        println!("-- CODE LEN : {}", code.len());
+
         let lua = Lua::new();
 
         Module {

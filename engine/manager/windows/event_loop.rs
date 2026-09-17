@@ -87,10 +87,8 @@ pub(super) unsafe extern "system" fn window_proc(
         WM_SIZE => {
             if let Some(mut state_ptr) = state {
                 let state = state_ptr.as_mut();
-                let width = (lparam & 0xFFFF) as u32;
-                let height = (lparam >> 16) as u32;
 
-                state.manager.resize(width, height);
+                state.manager.resize();
 
                 0
             } else {

@@ -8,7 +8,6 @@ use raw_window_handle as rwh;
 use crate::{manager::Manager, wallpaper::WallpaperDriver};
 
 pub struct Entry {
-    _wgpu_instance: wgpu::Instance,
     pub(crate) hinstance: NonNull<c_void>,
     pub(crate) wallpaper_driver: WallpaperDriver,
     pub(crate) manager: Manager,
@@ -39,7 +38,6 @@ impl Entry {
 
         Self {
             wallpaper_driver,
-            _wgpu_instance: wgpu_instance,
             hinstance,
             manager,
         }

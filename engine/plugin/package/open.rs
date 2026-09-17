@@ -43,7 +43,11 @@ impl PluginPackage {
             .eval()
             .unwrap();
 
-        Some(PluginFactory { lua, table })
+        Some(PluginFactory {
+            lua,
+            table,
+            kind: manifest.plugin.plugin_type,
+        })
     }
 }
 

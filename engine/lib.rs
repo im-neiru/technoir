@@ -12,7 +12,6 @@ pub mod wallpaper;
 
 pub use config::Config;
 pub use entry::Entry;
-pub use graphics::{Renderer, Visualizer};
 pub use samplers::AudioLoopback;
 
 // #[cfg(target_family = "windows")]

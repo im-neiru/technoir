@@ -13,6 +13,7 @@ use windows_sys::Win32::{
 };
 
 use crate::{
+    graphics::Context,
     utils::{DesktopWatcher, get_desktop_handles},
     wallpaper::{
         Screen,
@@ -23,7 +24,7 @@ use crate::{
 
 pub struct WallpaperDriver {
     pub(in crate::wallpaper) screens: Vec<Screen>,
-    instance: wgpu::Instance,
+    pub(crate) graphics: Context,
     renderer: Option<WallpaperRenderer>,
     watcher: Option<DesktopWatcher>,
     worker: HANDLE,
@@ -31,7 +32,7 @@ pub struct WallpaperDriver {
 }
 
 impl WallpaperDriver {
-    pub(crate) async fn new(instance: wgpu::Instance) -> Self {
+    pub(crate) async fn new(graphics: Context) -> Self {
         let screens = Screen::get_screens();
         // let mut loader = WallpaperLoader::new("");
 
@@ -39,7 +40,7 @@ impl WallpaperDriver {
 
         Self {
             screens,
-            instance,
+            graphics,
             renderer: None,
             worker: ptr::null_mut(),
             watcher: None,

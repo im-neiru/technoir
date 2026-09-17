@@ -22,19 +22,9 @@ impl Entry {
         }
         .expect("Failed to retrieve module handle");
 
-        let wgpu_instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::PRIMARY,
-            flags: wgpu::InstanceFlags::default(),
-            memory_budget_thresholds: wgpu::MemoryBudgetThresholds {
-                for_resource_creation: None,
-                for_device_loss: None,
-            },
-            backend_options: wgpu::BackendOptions::default(),
-            display: Some(Box::new(DisplayHandle)),
-        });
-
-        let wallpaper_driver = WallpaperDriver::new(wgpu_instance.clone()).await;
         let manager = Manager::new(hinstance, config.open_manager);
+
+        let wallpaper_driver = WallpaperDriver::new(manager.graphics()).await;
 
         Self {
             wallpaper_driver,

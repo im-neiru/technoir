@@ -10,6 +10,7 @@ use wgpu::{
 
 use super::WindowSurface;
 
+#[derive(Clone)]
 pub struct Context {
     pub(crate) instance: Instance,
     pub(crate) device: Device,

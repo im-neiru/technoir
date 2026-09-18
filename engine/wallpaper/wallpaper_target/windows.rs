@@ -16,7 +16,7 @@ use windows_sys::Win32::{
 
 use crate::{
     graphics::{Context, WindowSurface},
-    wallpaper::{ScreenBounds, WallpaperDriver, event_loop::window_proc},
+    wallpaper::{WallpaperDriver, event_loop::window_proc, screen::ScreenBounds},
 };
 
 pub(in crate::wallpaper) struct WallpaperTarget {

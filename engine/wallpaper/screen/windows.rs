@@ -13,7 +13,7 @@ use windows_sys::{
     core::BOOL,
 };
 
-use crate::wallpaper::WallpaperTarget;
+use crate::wallpaper::wallpaper_target::WallpaperTarget;
 
 pub(in crate::wallpaper) struct Screen {
     pub(in crate::wallpaper) hmonitor: NonNull<c_void>,
@@ -23,7 +23,6 @@ pub(in crate::wallpaper) struct Screen {
     name: String,
     bounds: super::ScreenBounds,
 
-    pub(in crate::wallpaper) provider: Option<Box<dyn crate::wallpaper::WallpaperProvider>>,
     pub(in crate::wallpaper) library_index: Option<usize>,
 }
 
@@ -75,16 +74,8 @@ impl Screen {
         parent: NonNull<c_void>,
         context: &crate::graphics::Context,
     ) {
-        self.target = Some(
-            WallpaperTarget::new(
-                &self.name,
-                &self.bounds,
-                hinstance,
-                parent,
-                context,
-            )
-            .await,
-        );
+        self.target =
+            Some(WallpaperTarget::new(&self.name, &self.bounds, hinstance, parent, context).await);
     }
 }
 
@@ -132,7 +123,6 @@ unsafe extern "system" fn monitor_enum_proc(
             },
             is_filled: false,
             target: None,
-            provider: None,
             library_index: None,
         });
     }

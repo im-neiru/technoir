@@ -14,37 +14,41 @@ use windows_sys::Win32::{
 
 use crate::{
     graphics::Context,
+    plugin::{PluginLoader, WallpaperInstance},
     utils::{DesktopWatcher, get_desktop_handles},
     wallpaper::{
         Screen,
         event_loop::{WM_APP_TERMINATE, enter_loop},
-        renderer::WallpaperRenderer,
     },
 };
 
 pub(crate) struct WallpaperDriver {
     pub(in crate::wallpaper) screens: Vec<Screen>,
     graphics: Context,
-    renderer: Option<WallpaperRenderer>,
     watcher: Option<DesktopWatcher>,
     worker: HANDLE,
-    // loader: WallpaperLoader,
+    wallpapers: Vec<WallpaperInstance>, // loader: WallpaperLoader,
 }
 
 impl WallpaperDriver {
-    pub(crate) async fn new(graphics: Context) -> Self {
+    pub(crate) async fn new(graphics: Context, loader: &PluginLoader) -> Self {
         let screens = Screen::get_screens();
-        // let mut loader = WallpaperLoader::new("");
+        let mut plugins = loader.enumerate_plugins().await;
 
-        // loader.load(screen, path, prepare_context, cleanup_context);
+        // just select the last for now
+
+        let plugin = plugins.pop().unwrap();
+
+        let factory = plugin.into_factory().unwrap();
+
+        let wallpaper = factory.new_wallpaper(&graphics);
 
         Self {
             screens,
             graphics,
-            renderer: None,
             worker: ptr::null_mut(),
             watcher: None,
-            // loader,
+            wallpapers: vec![],
         }
     }
 

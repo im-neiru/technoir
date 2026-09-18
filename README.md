@@ -1,6 +1,6 @@
 # TechNoir
 
-A lightweight, GPU-accelerated live wallpaper engine for Windows written in Rust.
+GPU-accelerated live wallpaper engine for Windows written in Rust.
 
 ## Overview
 

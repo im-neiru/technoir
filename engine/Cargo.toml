@@ -37,7 +37,6 @@ chrono.workspace = true
 zip.workspace = true
 
 ui.path = "../ui"
-wgsl-shaders = { path = "../wallpapers/wgsl" }
 
 
 [target.'cfg(windows)'.dependencies]

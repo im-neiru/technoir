@@ -19,14 +19,12 @@ use crate::{
     wallpaper::{
         Screen,
         event_loop::{WM_APP_TERMINATE, enter_loop},
-        renderer::WallpaperRenderer,
     },
 };
 
 pub(crate) struct WallpaperDriver {
     pub(in crate::wallpaper) screens: Vec<Screen>,
     graphics: Context,
-    renderer: Option<WallpaperRenderer>,
     watcher: Option<DesktopWatcher>,
     worker: HANDLE,
     wallpapers: Vec<WallpaperInstance>, // loader: WallpaperLoader,
@@ -48,7 +46,6 @@ impl WallpaperDriver {
         Self {
             screens,
             graphics,
-            renderer: None,
             worker: ptr::null_mut(),
             watcher: None,
             wallpapers: vec![],

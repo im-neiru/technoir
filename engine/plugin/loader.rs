@@ -22,7 +22,7 @@ impl PluginLoader {
     }
 
     #[inline]
-    pub(crate) async fn enumerate_plugins(&self) -> Box<[PluginPackage]> {
+    pub(crate) async fn enumerate_plugins(&self) -> Vec<PluginPackage> {
         let mut plugins = Vec::new();
         let mut seen_files = RapidHashSet::default();
 
@@ -38,7 +38,7 @@ impl PluginLoader {
             enumerate_root(&root, &mut seen_files, &mut plugins).await;
         }
 
-        plugins.into_boxed_slice()
+        plugins
     }
 }
 

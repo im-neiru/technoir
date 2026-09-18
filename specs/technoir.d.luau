@@ -1,5 +1,5 @@
 export type WallpaperInitContext = {
-    -- todo
+
 }
 
 export type WallpaperDrawContext = {

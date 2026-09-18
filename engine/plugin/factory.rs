@@ -1,4 +1,5 @@
 use mlua::{Function, Lua, Table, UserData, UserDataFields};
+use rapidhash::RapidHashMap;
 
 use crate::graphics::Context;
 
@@ -8,6 +9,7 @@ pub(crate) struct PluginFactory {
     pub(super) lua: Lua,
     pub(super) init: Function,
     pub(super) kind: PluginType,
+    pub(super) shaders: RapidHashMap<String, String>,
 }
 
 impl PluginFactory {

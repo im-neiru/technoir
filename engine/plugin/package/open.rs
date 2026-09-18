@@ -4,7 +4,8 @@ use std::{
 };
 
 use image::EncodableLayout;
-use mlua::{Function, Lua, Table};
+use mlua::{Function, Lua};
+use rapidhash::{HashMapExt, RapidHashMap};
 use zip::ZipArchive;
 
 use crate::{plugin::factory::PluginFactory, utils::ReadMappedFile};
@@ -27,26 +28,59 @@ impl PluginPackage {
         let Self { mapped, manifest } = self;
 
         let entry_point = manifest.plugin.entry_point;
-
-        let mut archive = ZipArchive::new(Cursor::new(mapped.as_bytes())).ok()?;
-        let mut file = archive.by_name(&entry_point).ok()?;
-
-        let mut code = Vec::with_capacity(file.size() as usize);
-        file.read_to_end(&mut code).ok()?;
-
+        let pipelines_path = manifest.plugin.pipelines;
         let instance_name = manifest.plugin.id.replace('.', "_");
 
+        let mut archive = ZipArchive::new(Cursor::new(mapped.as_bytes())).ok()?;
+
+        #[inline]
+        fn read_file<R: std::io::Read + std::io::Seek>(
+            archive: &mut ZipArchive<R>,
+            path: &str,
+        ) -> Option<Vec<u8>> {
+            let mut file = archive.by_name(path).ok()?;
+            let mut buf = Vec::with_capacity(file.size() as usize);
+            file.read_to_end(&mut buf).ok()?;
+            Some(buf)
+        }
+
+        let code = read_file(&mut archive, &entry_point)?;
+
         let lua = Lua::new();
+
         let init: Function = lua
             .load(code.as_bytes())
             .set_name(instance_name)
             .eval()
-            .unwrap();
+            .ok()?;
+
+        let pipelines_buf = read_file(&mut archive, &pipelines_path)?;
+        let pipelines: super::Pipelines = cbor2::from_slice(&pipelines_buf).ok()?;
+
+        let mut shaders = RapidHashMap::with_capacity(pipelines.0.len());
+        let mut shader_cache: RapidHashMap<String, String> =
+            RapidHashMap::with_capacity(pipelines.0.len());
+
+        for (name, pipeline) in pipelines.iter() {
+            let shader = if let Some(shader) = shader_cache.get(&pipeline.shader) {
+                shader.clone()
+            } else {
+                let buf = read_file(&mut archive, &pipeline.shader)?;
+                let shader = String::from_utf8_lossy(&buf).into_owned();
+
+                shader_cache.insert(pipeline.shader.clone(), shader.clone());
+
+                shader
+            };
+
+            shaders.insert(name.to_string(), shader);
+        }
 
         Some(PluginFactory {
             lua,
             init,
             kind: manifest.plugin.plugin_type,
+            shaders,
         })
     }
 }

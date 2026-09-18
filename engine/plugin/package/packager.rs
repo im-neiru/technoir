@@ -95,9 +95,11 @@ impl Packager {
             zip.start_file("pipelines.cbor", self.zip_opt).unwrap();
             zip.write_all(&pipelines_bytes).unwrap();
 
+            manifest.plugin.pipelines = "pipelines.cbor".to_owned();
+
             let manifest_bytes = cbor2::to_vec(&manifest).unwrap();
 
-            zip.start_file("manifest.cbor", self.zip_opt).unwrap();
+            zip.start_file("technoir.cbor", self.zip_opt).unwrap();
             zip.write_all(&manifest_bytes).unwrap();
 
             for (index, shader) in shaders_list.into_iter().enumerate() {

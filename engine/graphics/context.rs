@@ -103,10 +103,7 @@ impl Context {
             adapter,
         };
 
-        let window_surface = WindowSurface {
-            surface: primary_surface,
-            config,
-        };
+        let window_surface = WindowSurface::new(primary_surface, config);
 
         (context, window_surface)
     }

@@ -28,9 +28,9 @@ impl Entry {
         .expect("Failed to retrieve module handle");
 
         let manager = Manager::new(hinstance, config.open_manager);
-
-        let wallpaper_driver = WallpaperDriver::new(manager.graphics()).await;
         let plugin_loader = PluginLoader::new();
+
+        let wallpaper_driver = WallpaperDriver::new(manager.graphics(), &plugin_loader).await;
 
         Self {
             wallpaper_driver,
@@ -41,14 +41,6 @@ impl Entry {
     }
 
     pub fn run(mut self) {
-        // // test only
-        // smol::block_on(self.plugin_loader.load_wallpaper());
-        smol::block_on(async {
-            let v = self.plugin_loader.enumerate_plugins().await;
-
-            println!("{:#?}", v.first().unwrap().info());
-        });
-
         self.wallpaper_driver.run();
         crate::manager::enter_loop(self);
     }

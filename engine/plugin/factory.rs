@@ -1,4 +1,6 @@
-use mlua::{Function, Lua, ObjectLike, Table, UserData, UserDataFields};
+use mlua::{Function, Lua, Table, UserData, UserDataFields};
+
+use crate::graphics::Context;
 
 use super::{package::PluginType, wallpaper_instance::WallpaperInstance};
 
@@ -9,10 +11,9 @@ pub(crate) struct PluginFactory {
 }
 
 impl PluginFactory {
-    pub(crate) fn new_wallpaper(&self) -> WallpaperInstance {
+    pub(crate) fn new_wallpaper(&self, context: &Context) -> WallpaperInstance {
         let init_ctx = MakeWallpaperContext {
-            width: 1920,
-            height: 1080,
+            ctx: context.clone(),
         };
 
         let instance: Table = self
@@ -33,13 +34,9 @@ impl PluginFactory {
 
 #[derive(Clone)]
 pub struct MakeWallpaperContext {
-    pub width: u32,
-    pub height: u32,
+    ctx: Context,
 }
 
 impl UserData for MakeWallpaperContext {
-    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
-        fields.add_field_method_get("width", |_, this| Ok(this.width));
-        fields.add_field_method_get("height", |_, this| Ok(this.height));
-    }
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {}
 }

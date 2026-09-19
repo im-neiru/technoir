@@ -3,6 +3,7 @@ mod desktop_handles;
 #[cfg(target_family = "windows")]
 mod desktop_watcher;
 
+mod directories;
 mod program_data_path;
 mod read_mapped_file;
 

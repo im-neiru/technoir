@@ -318,6 +318,60 @@ impl<'m> MappedFileReader<'m> {
             }
         }
     }
+
+    #[inline]
+    fn rewind_inner(&mut self) -> io::Result<()> {
+        self.cursor = self.mapping.start_ptr();
+
+        Ok(())
+    }
+
+    #[inline]
+    fn stream_position_inner(&self) -> io::Result<u64> {
+        let offset = unsafe {
+            self.cursor
+                .byte_offset_from_unsigned(self.mapping.start_ptr())
+        };
+
+        Ok(offset as u64)
+    }
+
+    #[inline]
+    fn seek_relative_inner(&mut self, offset: i64) -> io::Result<()> {
+        let current = unsafe {
+            self.cursor
+                .byte_offset_from_unsigned(self.mapping.start_ptr())
+        };
+
+        if offset >= 0 {
+            let offset = offset as u64;
+            let remaining = self.mapping.len() - current;
+
+            if offset > MAX_OFFSET64 - current as u64 || offset > remaining as u64 {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    SEEK_OUT_OF_BOUNDS,
+                ));
+            }
+
+            self.cursor = unsafe { self.cursor.byte_add(offset as usize) };
+
+            Ok(())
+        } else {
+            let offset = offset.unsigned_abs();
+
+            if offset > current as u64 {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    SEEK_OUT_OF_BOUNDS,
+                ));
+            }
+
+            self.cursor = unsafe { self.cursor.byte_sub(offset as usize) };
+
+            Ok(())
+        }
+    }
 }
 
 impl<'m> std::io::Read for MappedFileReader<'m> {
@@ -331,6 +385,20 @@ impl<'m> std::io::Seek for MappedFileReader<'m> {
     #[inline]
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         self.seek_inner(pos)
+    }
+
+    #[inline]
+    fn rewind(&mut self) -> io::Result<()> {
+        self.rewind_inner()
+    }
+
+    #[inline]
+    fn stream_position(&mut self) -> io::Result<u64> {
+        self.stream_position_inner()
+    }
+
+    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
+        self.seek_relative_inner(offset)
     }
 }
 

@@ -2,7 +2,6 @@
 use core::{
     pin::Pin,
     ptr::{self, NonNull},
-    slice,
     task::{Context, Poll},
 };
 
@@ -30,8 +29,7 @@ use windows_sys::Win32::{
 pub(crate) struct ReadMappedFile {
     file: HANDLE,
     mapping: HANDLE,
-    ptr: NonNull<u8>,
-    len: usize,
+    slice: NonNull<[u8]>,
 }
 
 #[cfg(windows)]
@@ -126,11 +124,20 @@ impl ReadMappedFile {
             return Err(error);
         };
 
+        let slice = NonNull::slice_from_raw_parts(ptr, len);
+
+        debug_assert_eq!(
+            slice.cast::<u8>().addr(),
+            ptr.addr(),
+            "Reconstructed file mapping slice address ({:?}) drifted from original pointer ({:?})",
+            slice.cast::<u8>(),
+            ptr
+        );
+
         Ok(Self {
             file,
             mapping: mapping.as_ptr(),
-            ptr,
-            len,
+            slice,
         })
     }
 
@@ -140,21 +147,33 @@ impl ReadMappedFile {
         // `ptr` is the base address returned by MapViewOfFile.
         // The mapping remains alive for the lifetime of `self`.
         // `len` is the size obtained from GetFileSizeEx before mapping.
-        unsafe { slice::from_raw_parts(self.ptr.as_ptr(), self.len) }
+        unsafe { self.slice.as_ref() }
     }
 
     #[inline]
     pub(crate) fn stream<'m>(&'m self) -> MappedFileReader<'m> {
+        let ptr = self.start_ptr();
+
         MappedFileReader {
             mapping: self,
-            cursor: self.ptr,
-            end: unsafe { self.ptr.byte_add(self.len) },
+            cursor: ptr,
+            end: unsafe { ptr.byte_add(self.len()) },
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub(crate) fn is_empty(&self) -> bool {
-        self.len == 0
+        self.slice.is_empty()
+    }
+
+    #[inline(always)]
+    pub(crate) fn len(&self) -> usize {
+        self.slice.len()
+    }
+
+    #[inline(always)]
+    fn start_ptr(&self) -> NonNull<u8> {
+        self.slice.cast::<u8>()
     }
 }
 
@@ -164,7 +183,7 @@ impl Drop for ReadMappedFile {
     fn drop(&mut self) {
         unsafe {
             UnmapViewOfFile(MEMORY_MAPPED_VIEW_ADDRESS {
-                Value: self.ptr.as_ptr().cast(),
+                Value: self.slice.cast::<u8>().cast().as_ptr(),
             });
 
             CloseHandle(self.mapping);
@@ -210,7 +229,7 @@ impl<'m> MappedFileReader<'m> {
 
     #[inline]
     fn seek_inner(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        let len = unsafe { self.end.byte_offset_from_unsigned(self.mapping.ptr) };
+        let len = self.mapping.len();
 
         match pos {
             SeekFrom::Start(offset) => {
@@ -221,7 +240,7 @@ impl<'m> MappedFileReader<'m> {
                     ));
                 }
 
-                self.cursor = unsafe { self.mapping.ptr.byte_add(offset as usize) };
+                self.cursor = unsafe { self.mapping.start_ptr().byte_add(offset as usize) };
 
                 Ok(offset)
             }
@@ -255,7 +274,10 @@ impl<'m> MappedFileReader<'m> {
                 }
             }
             SeekFrom::Current(offset) => {
-                let current = unsafe { self.cursor.byte_offset_from_unsigned(self.mapping.ptr) };
+                let current = unsafe {
+                    self.cursor
+                        .byte_offset_from_unsigned(self.mapping.start_ptr())
+                };
 
                 if offset >= 0 {
                     let offset = offset as u64;

@@ -27,7 +27,8 @@ impl<'s> BinWrite for ShallowMeta<'s> {
     where
         S: io::AsyncWrite + io::AsyncSeek,
     {
-        let reserve = usize::max(self.name.len(), self.id.len()) + 1;
+        let version_str = self.version.to_string();
+        let reserve = usize::max(self.name.len(), self.id.len()).max(version_str.len()) + 1;
 
         staging_buf.begin(reserve);
 
@@ -43,6 +44,10 @@ impl<'s> BinWrite for ShallowMeta<'s> {
             return Err(PluginRegistryEncodeError::FieldExceedMaxLength("id"));
         };
 
+        stream.write(staging_buf.as_bytes()).await?;
+
+        // version
+        staging_buf.put_str_leb128(&version_str);
         stream.write(staging_buf.as_bytes()).await?;
 
         Ok(())

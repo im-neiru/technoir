@@ -88,15 +88,14 @@ pub struct Pipeline {
     /// Explicit entry points.
     ///
     /// `None` means the engine asks Naga to select the unique entry point.
-    #[serde(default)]
-    pub entry_points: Option<EntryPoints>,
+    pub entry_points: EntryPoints,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct EntryPoints {
     #[serde(default)]
-    pub vertex: Option<String>,
+    pub vertex: String,
 
     #[serde(default)]
-    pub fragment: Option<String>,
+    pub fragment: String,
 }

@@ -281,41 +281,7 @@ impl<'m> MappedFileReader<'m> {
                     Ok(len as u64 - offset)
                 }
             }
-            SeekFrom::Current(offset) => {
-                let current = unsafe {
-                    self.cursor
-                        .byte_offset_from_unsigned(self.mapping.start_ptr())
-                };
-
-                if offset >= 0 {
-                    let offset = offset as u64;
-                    let remaining = len - current;
-
-                    if offset > MAX_OFFSET64 - current as u64 || offset > remaining as u64 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidInput,
-                            SEEK_OUT_OF_BOUNDS,
-                        ));
-                    }
-
-                    self.cursor = unsafe { self.cursor.byte_add(offset as usize) };
-
-                    Ok(current as u64 + offset)
-                } else {
-                    let offset = offset.unsigned_abs();
-
-                    if offset > current as u64 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidInput,
-                            SEEK_OUT_OF_BOUNDS,
-                        ));
-                    }
-
-                    self.cursor = unsafe { self.cursor.byte_sub(offset as usize) };
-
-                    Ok(current as u64 - offset)
-                }
-            }
+            SeekFrom::Current(offset) => self.seek_relative_inner(offset),
         }
     }
 
@@ -327,27 +293,24 @@ impl<'m> MappedFileReader<'m> {
     }
 
     #[inline]
-    fn stream_position_inner(&self) -> io::Result<u64> {
+    fn stream_position_inner(&self) -> u64 {
         let offset = unsafe {
             self.cursor
                 .byte_offset_from_unsigned(self.mapping.start_ptr())
         };
 
-        Ok(offset as u64)
+        offset as u64
     }
 
     #[inline]
-    fn seek_relative_inner(&mut self, offset: i64) -> io::Result<()> {
-        let current = unsafe {
-            self.cursor
-                .byte_offset_from_unsigned(self.mapping.start_ptr())
-        };
+    fn seek_relative_inner(&mut self, offset: i64) -> io::Result<u64> {
+        let current = self.stream_position_inner();
 
         if offset >= 0 {
             let offset = offset as u64;
-            let remaining = self.mapping.len() - current;
+            let remaining = self.mapping.len() as u64 - current;
 
-            if offset > MAX_OFFSET64 - current as u64 || offset > remaining as u64 {
+            if offset > MAX_OFFSET64 - current || offset > remaining {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
                     SEEK_OUT_OF_BOUNDS,
@@ -356,11 +319,11 @@ impl<'m> MappedFileReader<'m> {
 
             self.cursor = unsafe { self.cursor.byte_add(offset as usize) };
 
-            Ok(())
+            Ok(current + offset)
         } else {
             let offset = offset.unsigned_abs();
 
-            if offset > current as u64 {
+            if offset > current {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
                     SEEK_OUT_OF_BOUNDS,
@@ -369,7 +332,7 @@ impl<'m> MappedFileReader<'m> {
 
             self.cursor = unsafe { self.cursor.byte_sub(offset as usize) };
 
-            Ok(())
+            Ok(current - offset)
         }
     }
 }
@@ -394,11 +357,14 @@ impl<'m> std::io::Seek for MappedFileReader<'m> {
 
     #[inline]
     fn stream_position(&mut self) -> io::Result<u64> {
-        self.stream_position_inner()
+        Ok(self.stream_position_inner())
     }
 
+    #[inline]
     fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
-        self.seek_relative_inner(offset)
+        self.seek_relative_inner(offset)?;
+
+        Ok(())
     }
 }
 

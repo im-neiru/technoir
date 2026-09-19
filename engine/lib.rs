@@ -3,6 +3,7 @@
 
 mod config;
 mod entry;
+mod errors;
 mod graphics;
 mod manager;
 mod utils;

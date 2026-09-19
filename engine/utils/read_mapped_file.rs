@@ -256,18 +256,16 @@ impl<'m> MappedFileReader<'m> {
             }
             SeekFrom::End(offset) => {
                 if offset >= 0 {
-                    let offset = offset as u64;
-
-                    if offset > MAX_OFFSET64 - len as u64 {
+                    if offset > 0 {
                         return Err(io::Error::new(
                             io::ErrorKind::InvalidInput,
                             SEEK_OUT_OF_BOUNDS,
                         ));
                     }
 
-                    self.cursor = unsafe { self.end.byte_add(offset as usize) };
+                    self.cursor = self.end;
 
-                    Ok(len as u64 + offset)
+                    Ok(len as u64)
                 } else {
                     let offset = offset.unsigned_abs();
 

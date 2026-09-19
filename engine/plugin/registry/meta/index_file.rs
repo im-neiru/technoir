@@ -1,88 +1,62 @@
-use std::{borrow::Cow, path::Path, pin::Pin};
+use std::{borrow::Cow, fs, path::Path};
 
 use semver::Version;
-use smol::{
-    fs,
-    io::{self, AsyncWriteExt},
-};
+use serde::{Deserialize, Serialize};
 
-use crate::{
-    errors::PluginRegistryEncodeError,
-    utils::{BinWrite, StagingBuffer},
-};
+use crate::{errors::PluginRegistryEncodeError, plugin::package::PluginType};
 
+#[derive(Serialize, Deserialize)]
 pub(crate) struct IndexFile<'s> {
-    shallows: Vec<ShallowMeta<'s>>,
+    api_version: Version,
+    entries: Vec<Entry<'s>>,
 }
 
 impl<'s> IndexFile<'s> {
     pub(crate) fn new() -> Self {
         Self {
-            shallows: Vec::new(),
+            entries: Vec::new(),
+            api_version: Version::new(0, 1, 0),
         }
     }
 
-    pub(crate) async fn write(
-        &self,
-        path: impl AsRef<Path>,
-    ) -> Result<(), PluginRegistryEncodeError> {
-        let mut file = Box::pin(fs::File::open(path).await?);
+    pub(crate) fn write(&self, path: impl AsRef<Path>) -> Result<(), PluginRegistryEncodeError> {
+        let file = fs::File::open(path)?;
 
-        let mut staging_buf = StagingBuffer::new(4);
-
-        // shallows count
-        staging_buf.put_leb128(self.shallows.len() as u64);
-        file.write(staging_buf.as_bytes()).await?;
-
-        // shollow items
-        for s in self.shallows.iter() {
-            s.write(&mut staging_buf, file.as_mut()).await?;
+        match cbor2::to_writer(&self, file) {
+            Err(cbor2::ser::Error::Io(io)) => return Err(PluginRegistryEncodeError::Io(io)),
+            Err(cbor2::ser::Error::Value(_)) => {
+                return Err(PluginRegistryEncodeError::EncodingError);
+            }
+            Ok(_) => (),
         }
 
         Ok(())
     }
 }
 
-pub(super) struct ShallowMeta<'s> {
+#[derive(Serialize, Deserialize)]
+pub(super) struct Entry<'s> {
     name: Cow<'s, str>,
     id: Cow<'s, str>,
     version: Version,
-}
 
-impl<'s> BinWrite for ShallowMeta<'s> {
-    type Error = PluginRegistryEncodeError;
+    #[serde(rename = "type")]
+    plugin_type: PluginType,
 
-    async fn write<S>(
-        &self,
-        staging_buf: &mut StagingBuffer,
-        mut stream: Pin<&mut S>,
-    ) -> Result<(), Self::Error>
-    where
-        S: io::AsyncWrite + io::AsyncSeek,
-    {
-        let version_str = self.version.to_string();
-        let reserve = usize::max(self.name.len(), self.id.len()).max(version_str.len()) + 1;
+    #[serde(default)]
+    description: Option<String>,
 
-        staging_buf.begin(reserve);
+    #[serde(default)]
+    author: Option<String>,
 
-        // name
-        if staging_buf.put_str_u8_len(&self.name, 128).is_err() {
-            return Err(PluginRegistryEncodeError::FieldExceedMaxLength("name"));
-        };
+    #[serde(default)]
+    license: Option<String>,
 
-        stream.write(staging_buf.as_bytes()).await?;
+    #[serde(default)]
+    icon: Option<String>,
 
-        // id
-        if staging_buf.put_str_u8_len(&self.id, 128).is_err() {
-            return Err(PluginRegistryEncodeError::FieldExceedMaxLength("id"));
-        };
+    #[serde(default)]
+    tags: Vec<String>,
 
-        stream.write(staging_buf.as_bytes()).await?;
-
-        // version
-        staging_buf.put_str_leb128(&version_str);
-        stream.write(staging_buf.as_bytes()).await?;
-
-        Ok(())
-    }
+    code_id: u32,
 }

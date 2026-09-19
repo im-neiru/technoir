@@ -9,10 +9,13 @@ use crate::{
     plugin::{consts::API_VERSION, package::PluginType},
 };
 
+use super::pipeline_index::PipelineIndex;
+
 #[derive(Serialize, Deserialize)]
 pub(crate) struct IndexFile<'s> {
     pub(in crate::plugin) api_version: Version,
     pub(in crate::plugin) entries: RapidHashMap<Cow<'s, str>, Entry<'s>>,
+    pub(in crate::plugin) pipelines: PipelineIndex<'s>,
 }
 
 impl<'s> IndexFile<'s> {
@@ -21,6 +24,7 @@ impl<'s> IndexFile<'s> {
         Self {
             entries: RapidHashMap::default(),
             api_version: API_VERSION,
+            pipelines: PipelineIndex::new(),
         }
     }
 

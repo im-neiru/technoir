@@ -36,6 +36,7 @@ cbor2 .workspace = true
 libloading.workspace = true
 chrono.workspace = true
 zip.workspace = true
+zstd.workspace = true
 
 ui.path = "../ui"
 

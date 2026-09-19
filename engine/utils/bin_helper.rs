@@ -7,7 +7,7 @@ use crate::errors::StagingBufferError;
 pub(crate) trait BinWrite {
     type Error;
 
-    async fn write_meta<S>(
+    async fn write<S>(
         &self,
         staging_buf: &mut StagingBuffer,
         stream: Pin<&mut S>,
@@ -20,8 +20,8 @@ pub(crate) struct StagingBuffer(Vec<u8>);
 
 impl StagingBuffer {
     #[inline]
-    pub(crate) fn new() -> Self {
-        Self(Vec::new())
+    pub(crate) fn new(cap: usize) -> Self {
+        Self(Vec::with_capacity(cap))
     }
 
     #[inline]
@@ -50,6 +50,11 @@ impl StagingBuffer {
 
         encode_leb128(bytes.len() as u64, &mut self.0);
         self.0.extend_from_slice(bytes);
+    }
+
+    #[inline]
+    pub(crate) fn put_leb128(&mut self, l: u64) {
+        encode_leb128(l, &mut self.0);
     }
 
     #[inline]

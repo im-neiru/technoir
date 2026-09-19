@@ -1,14 +1,47 @@
-use std::{borrow::Cow, pin::Pin};
+use std::{borrow::Cow, path::Path, pin::Pin};
 
 use semver::Version;
-use smol::io::{self, AsyncWriteExt};
+use smol::{
+    fs,
+    io::{self, AsyncWriteExt},
+};
 
 use crate::{
     errors::PluginRegistryEncodeError,
     utils::{BinWrite, StagingBuffer},
 };
 
-pub(super) struct IndexFile {}
+pub(crate) struct IndexFile<'s> {
+    shallows: Vec<ShallowMeta<'s>>,
+}
+
+impl<'s> IndexFile<'s> {
+    pub(crate) fn new() -> Self {
+        Self {
+            shallows: Vec::new(),
+        }
+    }
+
+    pub(crate) async fn write(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Result<(), PluginRegistryEncodeError> {
+        let mut file = Box::pin(fs::File::open(path).await?);
+
+        let mut staging_buf = StagingBuffer::new(4);
+
+        // shallows count
+        staging_buf.put_leb128(self.shallows.len() as u64);
+        file.write(staging_buf.as_bytes()).await?;
+
+        // shollow items
+        for s in self.shallows.iter() {
+            s.write(&mut staging_buf, file.as_mut()).await?;
+        }
+
+        Ok(())
+    }
+}
 
 pub(super) struct ShallowMeta<'s> {
     name: Cow<'s, str>,
@@ -19,7 +52,7 @@ pub(super) struct ShallowMeta<'s> {
 impl<'s> BinWrite for ShallowMeta<'s> {
     type Error = PluginRegistryEncodeError;
 
-    async fn write_meta<S>(
+    async fn write<S>(
         &self,
         staging_buf: &mut StagingBuffer,
         mut stream: Pin<&mut S>,

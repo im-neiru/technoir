@@ -45,6 +45,14 @@ impl StagingBuffer {
     }
 
     #[inline]
+    pub(crate) fn put_str_leb128(&mut self, s: impl AsRef<str>) {
+        let bytes = s.as_ref().as_bytes();
+
+        encode_leb128(bytes.len() as u64, &mut self.0);
+        self.0.extend_from_slice(bytes);
+    }
+
+    #[inline]
     pub(crate) fn begin(&mut self, cap: usize) {
         if let Some(additional) = cap.checked_sub(self.0.capacity()) {
             self.0.reserve(additional);
@@ -55,4 +63,14 @@ impl StagingBuffer {
     pub(crate) fn as_bytes(&self) -> &[u8] {
         self.0.as_slice()
     }
+}
+
+#[inline]
+fn encode_leb128(mut value: u64, out: &mut Vec<u8>) {
+    while value >= 0x80 {
+        out.push((value as u8) | 0x80);
+        value >>= 7;
+    }
+
+    out.push(value as u8);
 }

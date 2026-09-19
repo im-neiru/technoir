@@ -11,3 +11,18 @@ pub(crate) enum PluginDirectoryError {
     #[error("Target path already exists but is a file, not a directory")]
     PathIsFile,
 }
+
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum PluginRegistryEncodeError {
+    #[error("{0} exceed max length")]
+    FieldExceedMaxLength(&'static str),
+
+    #[error("{0}")]
+    Io(#[from] io::Error),
+}
+
+#[derive(Clone, Copy, Debug, thiserror::Error)]
+pub(crate) enum StagingBufferError {
+    #[error("Bytes exceed max length")]
+    BytesExceedMaxLength,
+}

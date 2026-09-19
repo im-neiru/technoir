@@ -1,5 +1,6 @@
 #[cfg(windows)]
 use core::{
+    ffi::c_void,
     pin::Pin,
     ptr::{self, NonNull},
     task::{Context, Poll},
@@ -15,7 +16,7 @@ use std::os::windows::ffi::OsStrExt;
 
 #[cfg(windows)]
 use windows_sys::Win32::{
-    Foundation::{CloseHandle, GENERIC_READ, HANDLE, INVALID_HANDLE_VALUE},
+    Foundation::{CloseHandle, GENERIC_READ, INVALID_HANDLE_VALUE},
     Storage::FileSystem::{
         CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, GetFileSizeEx, OPEN_EXISTING,
     },
@@ -25,17 +26,19 @@ use windows_sys::Win32::{
     },
 };
 
+type HandleNonNull = NonNull<c_void>;
+
 #[cfg(windows)]
 pub(crate) struct ReadMappedFile {
-    file: HANDLE,
-    mapping: HANDLE,
     slice: NonNull<[u8]>,
+    file: HandleNonNull,
+    mapping: HandleNonNull,
 }
 
 #[cfg(windows)]
 impl ReadMappedFile {
     #[inline]
-    pub(crate) fn open<P>(path: P) -> std::io::Result<Self>
+    pub(crate) fn open<P>(path: P) -> io::Result<Self>
     where
         P: AsRef<Path>,
     {
@@ -59,16 +62,23 @@ impl ReadMappedFile {
         };
 
         if file == INVALID_HANDLE_VALUE {
-            return Err(std::io::Error::last_os_error());
+            return Err(io::Error::last_os_error());
         }
+
+        let Some(file) = NonNull::new(file) else {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "CreateFileW returned a null handle",
+            ));
+        };
 
         let mut size = 0i64;
 
-        if unsafe { GetFileSizeEx(file, &mut size) } == 0 {
-            let error = std::io::Error::last_os_error();
+        if unsafe { GetFileSizeEx(file.as_ptr(), &mut size) } == 0 {
+            let error = io::Error::last_os_error();
 
             unsafe {
-                CloseHandle(file);
+                CloseHandle(file.as_ptr());
             }
 
             return Err(error);
@@ -76,7 +86,7 @@ impl ReadMappedFile {
 
         if size <= 0 {
             unsafe {
-                CloseHandle(file);
+                CloseHandle(file.as_ptr());
             }
 
             return Err(std::io::Error::other("file is empty"));
@@ -84,7 +94,7 @@ impl ReadMappedFile {
 
         let len = usize::try_from(size).map_err(|_| {
             unsafe {
-                CloseHandle(file);
+                CloseHandle(file.as_ptr());
             }
 
             std::io::Error::other("file is too large")
@@ -92,7 +102,7 @@ impl ReadMappedFile {
 
         let mapping = unsafe {
             CreateFileMappingW(
-                file,
+                file.as_ptr(),
                 ptr::null(),
                 PAGE_READONLY,
                 (size as u64 >> 32) as u32,
@@ -105,7 +115,7 @@ impl ReadMappedFile {
             let error = std::io::Error::last_os_error();
 
             unsafe {
-                CloseHandle(file);
+                CloseHandle(file.as_ptr());
             }
 
             return Err(error);
@@ -118,7 +128,7 @@ impl ReadMappedFile {
 
             unsafe {
                 CloseHandle(mapping.as_ptr());
-                CloseHandle(file);
+                CloseHandle(file.as_ptr());
             }
 
             return Err(error);
@@ -136,7 +146,7 @@ impl ReadMappedFile {
 
         Ok(Self {
             file,
-            mapping: mapping.as_ptr(),
+            mapping,
             slice,
         })
     }
@@ -186,8 +196,8 @@ impl Drop for ReadMappedFile {
                 Value: self.slice.cast::<u8>().cast().as_ptr(),
             });
 
-            CloseHandle(self.mapping);
-            CloseHandle(self.file);
+            CloseHandle(self.mapping.as_ptr());
+            CloseHandle(self.file.as_ptr());
         }
     }
 }

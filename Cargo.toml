@@ -3,6 +3,7 @@ members = ["app", "engine", "ui"]
 resolver = "3"
 
 [workspace.dependencies]
+blake2 = "0.11.0"
 bytemuck = "1.25.0"
 ciborium = "0.2.2"
 crossbeam-queue = "0.3.12"

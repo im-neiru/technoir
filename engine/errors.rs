@@ -14,11 +14,10 @@ pub(crate) enum PluginDirectoryError {
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum PluginRegistryEncodeError {
-    #[error("{0} exceed max length")]
-    FieldExceedMaxLength(&'static str),
-
     #[error("{0}")]
     Io(#[from] io::Error),
+    #[error("Encoding error")]
+    EncodingError,
 }
 
 #[derive(Clone, Copy, Debug, thiserror::Error)]

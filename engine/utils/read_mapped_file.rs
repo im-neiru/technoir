@@ -1,7 +1,9 @@
 #[cfg(windows)]
 use core::{
+    pin::Pin,
     ptr::{self, NonNull},
     slice,
+    task::{Context, Poll},
 };
 
 use std::path::Path;
@@ -156,5 +158,44 @@ impl Drop for ReadMappedFile {
             CloseHandle(self.mapping);
             CloseHandle(self.file);
         }
+    }
+}
+
+pub(crate) struct MappedFileReader<'m> {
+    mapping: &'m ReadMappedFile,
+    cursor: NonNull<u8>,
+    end: NonNull<u8>,
+}
+
+impl<'m> smol::io::AsyncRead for MappedFileReader<'m> {
+    #[inline]
+    fn poll_read(
+        self: Pin<&mut Self>,
+        _ctx: &mut Context<'_>,
+        buf: &mut [u8],
+    ) -> Poll<std::io::Result<usize>> {
+        let this = unsafe { self.get_unchecked_mut() };
+
+        if buf.is_empty() {
+            return Poll::Ready(Ok(0));
+        }
+
+        let remaining = unsafe { this.end.byte_offset_from_unsigned(this.cursor) };
+
+        if remaining == 0 {
+            return Poll::Ready(Ok(0));
+        }
+
+        let len = remaining.min(buf.len());
+
+        unsafe {
+            let dest = NonNull::new_unchecked(buf.as_mut_ptr());
+
+            this.cursor.copy_to_nonoverlapping(dest, len);
+
+            this.cursor = this.cursor.byte_add(len);
+        }
+
+        Poll::Ready(Ok(len))
     }
 }

@@ -6,7 +6,7 @@ use crate::plugin::package::EntryPoints;
 
 #[derive(Serialize, Deserialize)]
 pub(in crate::plugin) struct PipelineIndex<'s> {
-    entries: Vec<PipelineEntry>,
+    entries: Vec<PipelineEntry<'s>>,
     shaders: Vec<ShaderEntry<'s>>,
 }
 
@@ -21,11 +21,10 @@ impl<'s> PipelineIndex<'s> {
 }
 
 #[derive(Deserialize, Serialize)]
-pub(crate) struct PipelineEntry {
+pub(crate) struct PipelineEntry<'s> {
     pub(in crate::plugin) shader_idx: u32,
 
-    #[serde(default)]
-    pub(in crate::plugin) entry_points: Option<EntryPoints>,
+    pub(in crate::plugin) entry_points: EntryPoints<'s>,
 }
 
 #[derive(Serialize, Deserialize)]

@@ -88,14 +88,14 @@ impl PluginPackage {
 impl super::PluginManifest {
     #[inline]
     pub(crate) async fn read_package(path: &Path) -> Option<PluginPackage> {
-        let mapped = ReadMappedFile::open(path).await.ok()?;
+        let mapped = ReadMappedFile::open(path).ok()?;
 
         if mapped.is_empty() {
             return None;
         }
 
         let manifest = {
-            let mut archive = ZipArchive::new(Cursor::new(mapped.as_bytes())).ok()?;
+            let mut archive = ZipArchive::new(mapped.stream()).ok()?;
             let mut file = archive.by_name(MANIFEST_NAME).ok()?;
 
             let mut bytes = Vec::new();

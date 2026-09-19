@@ -50,9 +50,9 @@ impl PluginRegistry {
         cbor2::from_slice(&bytes).map_err(|_| PluginInstallError::InvalidPluginPackage)
     }
 
-    fn upsert_entry(
-        index_file: &mut IndexFile,
-        manifest: PluginManifest,
+    fn upsert_entry<'s>(
+        index_file: &mut IndexFile<'s>,
+        manifest: PluginManifest<'s>,
     ) -> Result<(), PluginInstallError> {
         let Plugin {
             name,
@@ -69,16 +69,16 @@ impl PluginRegistry {
             tags,
         } = manifest.plugin;
 
-        if let Some(existing) = index_file.entries.get(id.as_str())
+        if let Some(existing) = index_file.entries.get(&id)
             && !should_upgrade(&existing.version, &version)
         {
             return Ok(());
         }
 
         index_file.entries.insert(
-            Cow::Owned(id),
+            id,
             Entry {
-                name: Cow::Owned(name),
+                name,
                 version,
                 plugin_type,
                 description,

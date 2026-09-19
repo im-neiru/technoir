@@ -53,19 +53,19 @@ pub(in crate::plugin) struct Entry<'s> {
     pub(in crate::plugin) plugin_type: PluginType,
 
     #[serde(default)]
-    pub(in crate::plugin) description: Option<String>,
+    pub(in crate::plugin) description: Option<Cow<'s, str>>,
 
     #[serde(default)]
-    pub(in crate::plugin) author: Option<String>,
+    pub(in crate::plugin) author: Option<Cow<'s, str>>,
 
     #[serde(default)]
-    pub(in crate::plugin) license: Option<String>,
+    pub(in crate::plugin) license: Option<Cow<'s, str>>,
 
     #[serde(default)]
-    pub(in crate::plugin) icon: Option<String>,
+    pub(in crate::plugin) icon: Option<Cow<'s, str>>,
 
     #[serde(default)]
-    pub(in crate::plugin) tags: Vec<String>,
+    pub(in crate::plugin) tags: Vec<Cow<'s, str>>,
 
     pub(in crate::plugin) code_id: u32,
 

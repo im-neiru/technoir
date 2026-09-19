@@ -46,8 +46,6 @@ impl StagingBuffer {
 
     #[inline]
     pub(crate) fn begin(&mut self, cap: usize) {
-        self.0.clear();
-
         if let Some(additional) = cap.checked_sub(self.0.capacity()) {
             self.0.reserve(additional);
         }

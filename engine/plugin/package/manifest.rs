@@ -1,3 +1,4 @@
+use rapidhash::RapidHashMap;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
@@ -63,4 +64,39 @@ pub enum PluginType {
 #[inline(always)]
 fn default_pipelines() -> String {
     String::from("pipelines.toml")
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+#[serde(transparent)]
+pub struct Pipelines(pub RapidHashMap<String, Pipeline>);
+
+impl Pipelines {
+    pub fn get(&self, name: &str) -> Option<&Pipeline> {
+        self.0.get(name)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Pipeline)> {
+        self.0.iter()
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Pipeline {
+    /// Shader path relative to the plugin's `shaders/` directory.
+    pub shader: String,
+
+    /// Explicit entry points.
+    ///
+    /// `None` means the engine asks Naga to select the unique entry point.
+    #[serde(default)]
+    pub entry_points: Option<EntryPoints>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct EntryPoints {
+    #[serde(default)]
+    pub vertex: Option<String>,
+
+    #[serde(default)]
+    pub fragment: Option<String>,
 }

@@ -1,31 +1,37 @@
-use std::{borrow::Cow, fs, path::Path};
+use std::{borrow::Cow, io::Write};
 
+use rapidhash::RapidHashMap;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
-use crate::{errors::PluginRegistryEncodeError, plugin::package::PluginType};
+use crate::{
+    errors::PluginInstallError,
+    plugin::{consts::API_VERSION, package::PluginType},
+};
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct IndexFile<'s> {
-    api_version: Version,
-    entries: Vec<Entry<'s>>,
+    pub(in crate::plugin) api_version: Version,
+    pub(in crate::plugin) entries: RapidHashMap<Cow<'s, str>, Entry<'s>>,
 }
 
 impl<'s> IndexFile<'s> {
-    pub(crate) fn new() -> Self {
+    #[inline]
+    pub(in crate::plugin) fn new() -> Self {
         Self {
-            entries: Vec::new(),
-            api_version: Version::new(0, 1, 0),
+            entries: RapidHashMap::default(),
+            api_version: API_VERSION,
         }
     }
 
-    pub(crate) fn write(&self, path: impl AsRef<Path>) -> Result<(), PluginRegistryEncodeError> {
-        let file = fs::File::open(path)?;
-
-        match cbor2::to_writer(&self, file) {
-            Err(cbor2::ser::Error::Io(io)) => return Err(PluginRegistryEncodeError::Io(io)),
+    pub(in crate::plugin) fn write<S>(&self, s: S) -> Result<(), PluginInstallError>
+    where
+        S: Write,
+    {
+        match cbor2::to_writer(&self, s) {
+            Err(cbor2::ser::Error::Io(io)) => return Err(PluginInstallError::Io(io)),
             Err(cbor2::ser::Error::Value(_)) => {
-                return Err(PluginRegistryEncodeError::EncodingError);
+                return Err(PluginInstallError::EncodingError);
             }
             Ok(_) => (),
         }
@@ -35,28 +41,29 @@ impl<'s> IndexFile<'s> {
 }
 
 #[derive(Serialize, Deserialize)]
-pub(super) struct Entry<'s> {
-    name: Cow<'s, str>,
-    id: Cow<'s, str>,
-    version: Version,
+pub(in crate::plugin) struct Entry<'s> {
+    pub(in crate::plugin) name: Cow<'s, str>,
+    pub(in crate::plugin) version: Version,
 
     #[serde(rename = "type")]
-    plugin_type: PluginType,
+    pub(in crate::plugin) plugin_type: PluginType,
 
     #[serde(default)]
-    description: Option<String>,
+    pub(in crate::plugin) description: Option<String>,
 
     #[serde(default)]
-    author: Option<String>,
+    pub(in crate::plugin) author: Option<String>,
 
     #[serde(default)]
-    license: Option<String>,
+    pub(in crate::plugin) license: Option<String>,
 
     #[serde(default)]
-    icon: Option<String>,
+    pub(in crate::plugin) icon: Option<String>,
 
     #[serde(default)]
-    tags: Vec<String>,
+    pub(in crate::plugin) tags: Vec<String>,
 
-    code_id: u32,
+    pub(in crate::plugin) code_id: u32,
+
+    pub(in crate::plugin) pipelines: Vec<u32>,
 }

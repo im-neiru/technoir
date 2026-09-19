@@ -144,6 +144,15 @@ impl ReadMappedFile {
     }
 
     #[inline]
+    pub(crate) fn stream<'m>(&'m self) -> MappedFileReader<'m> {
+        MappedFileReader {
+            mapping: self,
+            cursor: self.ptr,
+            end: unsafe { self.ptr.byte_add(self.len) },
+        }
+    }
+
+    #[inline]
     pub(crate) fn is_empty(&self) -> bool {
         self.len == 0
     }
@@ -170,23 +179,20 @@ pub(crate) struct MappedFileReader<'m> {
     end: NonNull<u8>,
 }
 
-impl<'m> smol::io::AsyncRead for MappedFileReader<'m> {
-    #[inline]
-    fn poll_read(
-        self: Pin<&mut Self>,
-        _ctx: &mut Context<'_>,
-        buf: &mut [u8],
-    ) -> Poll<io::Result<usize>> {
-        let this = unsafe { self.get_unchecked_mut() };
+const MAX_OFFSET64: u64 = isize::MAX as u64;
+const SEEK_OUT_OF_BOUNDS: &str = "seek position out of bounds";
 
+impl<'m> MappedFileReader<'m> {
+    #[inline]
+    fn read_inner(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         if buf.is_empty() {
-            return Poll::Ready(Ok(0));
+            return Ok(0);
         }
 
-        let remaining = unsafe { this.end.byte_offset_from_unsigned(this.cursor) };
+        let remaining = unsafe { self.end.byte_offset_from_unsigned(self.cursor) };
 
         if remaining == 0 {
-            return Poll::Ready(Ok(0));
+            return Ok(0);
         }
 
         let len = remaining.min(buf.len());
@@ -194,17 +200,120 @@ impl<'m> smol::io::AsyncRead for MappedFileReader<'m> {
         unsafe {
             let dest = NonNull::new_unchecked(buf.as_mut_ptr());
 
-            this.cursor.copy_to_nonoverlapping(dest, len);
+            self.cursor.copy_to_nonoverlapping(dest, len);
 
-            this.cursor = this.cursor.byte_add(len);
+            self.cursor = self.cursor.byte_add(len);
         }
 
-        Poll::Ready(Ok(len))
+        Ok(len)
+    }
+
+    #[inline]
+    fn seek_inner(&mut self, pos: SeekFrom) -> io::Result<u64> {
+        let len = unsafe { self.end.byte_offset_from_unsigned(self.mapping.ptr) };
+
+        match pos {
+            SeekFrom::Start(offset) => {
+                if offset > MAX_OFFSET64 || offset > len as u64 {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        SEEK_OUT_OF_BOUNDS,
+                    ));
+                }
+
+                self.cursor = unsafe { self.mapping.ptr.byte_add(offset as usize) };
+
+                Ok(offset)
+            }
+            SeekFrom::End(offset) => {
+                if offset >= 0 {
+                    let offset = offset as u64;
+
+                    if offset > MAX_OFFSET64 - len as u64 {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            SEEK_OUT_OF_BOUNDS,
+                        ));
+                    }
+
+                    self.cursor = unsafe { self.end.byte_add(offset as usize) };
+
+                    Ok(len as u64 + offset)
+                } else {
+                    let offset = offset.unsigned_abs();
+
+                    if offset > len as u64 {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            SEEK_OUT_OF_BOUNDS,
+                        ));
+                    }
+
+                    self.cursor = unsafe { self.end.byte_sub(offset as usize) };
+
+                    Ok(len as u64 - offset)
+                }
+            }
+            SeekFrom::Current(offset) => {
+                let current = unsafe { self.cursor.byte_offset_from_unsigned(self.mapping.ptr) };
+
+                if offset >= 0 {
+                    let offset = offset as u64;
+                    let remaining = len - current;
+
+                    if offset > MAX_OFFSET64 - current as u64 || offset > remaining as u64 {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            SEEK_OUT_OF_BOUNDS,
+                        ));
+                    }
+
+                    self.cursor = unsafe { self.cursor.byte_add(offset as usize) };
+
+                    Ok(current as u64 + offset)
+                } else {
+                    let offset = offset.unsigned_abs();
+
+                    if offset > current as u64 {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            SEEK_OUT_OF_BOUNDS,
+                        ));
+                    }
+
+                    self.cursor = unsafe { self.cursor.byte_sub(offset as usize) };
+
+                    Ok(current as u64 - offset)
+                }
+            }
+        }
     }
 }
 
-const MAX_OFFSET64: u64 = isize::MAX as u64;
-const SEEK_OUT_OF_BOUNDS: &str = "seek position out of bounds";
+impl<'m> std::io::Read for MappedFileReader<'m> {
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.read_inner(buf)
+    }
+}
+
+impl<'m> std::io::Seek for MappedFileReader<'m> {
+    #[inline]
+    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
+        self.seek_inner(pos)
+    }
+}
+
+impl<'m> smol::io::AsyncRead for MappedFileReader<'m> {
+    #[inline]
+    fn poll_read(
+        self: Pin<&mut Self>,
+        _ctx: &mut Context<'_>,
+        buf: &mut [u8],
+    ) -> Poll<io::Result<usize>> {
+        Poll::Ready(unsafe { self.get_unchecked_mut().read_inner(buf) })
+    }
+}
 
 impl<'m> smol::io::AsyncSeek for MappedFileReader<'m> {
     #[inline]
@@ -213,86 +322,6 @@ impl<'m> smol::io::AsyncSeek for MappedFileReader<'m> {
         _ctx: &mut Context<'_>,
         pos: SeekFrom,
     ) -> Poll<io::Result<u64>> {
-        let this = unsafe { self.get_unchecked_mut() };
-
-        let len = unsafe { this.end.byte_offset_from_unsigned(this.mapping.ptr) };
-
-        match pos {
-            SeekFrom::Start(offset) => {
-                if offset > MAX_OFFSET64 || offset > len as u64 {
-                    return Poll::Ready(Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        SEEK_OUT_OF_BOUNDS,
-                    )));
-                }
-
-                this.cursor = unsafe { this.mapping.ptr.byte_add(offset as usize) };
-
-                Poll::Ready(Ok(offset))
-            }
-
-            SeekFrom::End(offset) => {
-                if offset >= 0 {
-                    if offset as u64 > MAX_OFFSET64 - len as u64 {
-                        return Poll::Ready(Err(io::Error::new(
-                            io::ErrorKind::InvalidInput,
-                            SEEK_OUT_OF_BOUNDS,
-                        )));
-                    }
-
-                    let offset = offset as usize;
-
-                    this.cursor = unsafe { this.end.byte_add(offset) };
-
-                    Poll::Ready(Ok(len as u64 + offset as u64))
-                } else {
-                    let offset = offset.unsigned_abs();
-
-                    if offset > len as u64 {
-                        return Poll::Ready(Err(io::Error::new(
-                            io::ErrorKind::InvalidInput,
-                            SEEK_OUT_OF_BOUNDS,
-                        )));
-                    }
-
-                    this.cursor = unsafe { this.end.byte_sub(offset as usize) };
-
-                    Poll::Ready(Ok(len as u64 - offset))
-                }
-            }
-
-            SeekFrom::Current(offset) => {
-                let current = unsafe { this.cursor.byte_offset_from_unsigned(this.mapping.ptr) };
-
-                if offset >= 0 {
-                    let offset = offset as u64;
-                    let remaining = len - current;
-
-                    if offset > MAX_OFFSET64 - current as u64 || offset > remaining as u64 {
-                        return Poll::Ready(Err(io::Error::new(
-                            io::ErrorKind::InvalidInput,
-                            SEEK_OUT_OF_BOUNDS,
-                        )));
-                    }
-
-                    this.cursor = unsafe { this.cursor.byte_add(offset as usize) };
-
-                    Poll::Ready(Ok(current as u64 + offset))
-                } else {
-                    let offset = offset.unsigned_abs();
-
-                    if offset > current as u64 {
-                        return Poll::Ready(Err(io::Error::new(
-                            io::ErrorKind::InvalidInput,
-                            SEEK_OUT_OF_BOUNDS,
-                        )));
-                    }
-
-                    this.cursor = unsafe { this.cursor.byte_sub(offset as usize) };
-
-                    Poll::Ready(Ok(current as u64 - offset))
-                }
-            }
-        }
+        Poll::Ready(unsafe { self.get_unchecked_mut().seek_inner(pos) })
     }
 }

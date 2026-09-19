@@ -4,7 +4,10 @@ use mlua::prelude::*;
 use smol::fs;
 use zip::{CompressionMethod, ZipWriter, write::SimpleFileOptions};
 
-use super::{manifest::PluginManifest, pipelines::Pipelines, wgsl_minifier::minify_wgsl};
+use super::{
+    manifest::{Pipelines, PluginManifest},
+    wgsl_minifier::minify_wgsl,
+};
 
 pub struct Packager {
     compiler: LuaCompiler,

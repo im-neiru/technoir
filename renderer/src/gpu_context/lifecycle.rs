@@ -7,16 +7,15 @@ use core::{
     sync::atomic::{AtomicU32, Ordering, fence},
 };
 
-use wgpu::{Instance, InstanceDescriptor};
+use wgpu::{
+    Instance, InstanceDescriptor,
+    rwh::{self, DisplayHandle, HasDisplayHandle, HasWindowHandle},
+};
 
-pub(crate) struct GpuState {
-    pub(crate) instance: Instance,
-}
-
-pub(crate) struct GpuContext(PhantomData<&'static GpuState>);
+use super::{GpuContext, GpuState};
 
 impl GpuContext {
-    pub(crate) fn get_or_init() -> Self {
+    pub(crate) fn get_or_init(handle: impl HasDisplayHandle + HasWindowHandle) -> Self {
         loop {
             match SLOT_FLAG.load(Ordering::Acquire) {
                 UNINITIALIZED => {
@@ -30,6 +29,7 @@ impl GpuContext {
                         .is_ok()
                     {
                         initialize_slot();
+
                         return Self(PhantomData);
                     }
                 }
@@ -99,7 +99,8 @@ struct TransitionGuard {
 }
 
 impl TransitionGuard {
-    fn new(settle_to: SlotFlag) -> Self {
+    #[inline(always)]
+    const fn new(settle_to: SlotFlag) -> Self {
         Self { settle_to }
     }
 }
@@ -110,11 +111,15 @@ impl Drop for TransitionGuard {
     }
 }
 
-fn initialize_slot() {
+fn initialize_slot(handle: impl HasDisplayHandle + HasWindowHandle) {
     let mut transition = TransitionGuard::new(SlotFlag::Uninitialized);
 
+    let display = handle.display_handle().unwrap();
+
     let state = GpuState {
-        instance: Instance::new(InstanceDescriptor::new_without_display_handle()),
+        instance: Instance::new(InstanceDescriptor::new_with_display_handle(Box::new(
+            DisplayHandleWrapper(display),
+        ))),
     };
 
     unsafe {

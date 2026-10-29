@@ -1,4 +1,4 @@
-use std::{borrow::Cow, io::Read, path::Path};
+use std::{io::Read, path::Path};
 
 use semver::Version;
 use zip::ZipArchive;
@@ -23,7 +23,7 @@ impl PluginRegistry {
 
         for path in paths.iter() {
             let manifest = Self::read_manifest(path)?;
-            Self::upsert_entry(&mut index_file, manifest)?;
+            self.upsert_entry(&mut index_file, manifest)?;
         }
 
         Ok(())
@@ -51,6 +51,7 @@ impl PluginRegistry {
     }
 
     fn upsert_entry<'s>(
+        &self,
         index_file: &mut IndexFile<'s>,
         manifest: PluginManifest<'s>,
     ) -> Result<(), PluginInstallError> {
@@ -74,6 +75,8 @@ impl PluginRegistry {
         {
             return Ok(());
         }
+
+        self.programs.push(bytes)
 
         index_file.entries.insert(
             id,

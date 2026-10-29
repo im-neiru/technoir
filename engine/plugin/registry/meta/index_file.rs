@@ -4,18 +4,23 @@ use rapidhash::RapidHashMap;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
+use crate::plugin::package::EntryPoints;
 use crate::{
     errors::PluginInstallError,
     plugin::{consts::API_VERSION, package::PluginType},
 };
 
-use super::pipeline_index::PipelineIndex;
-
 #[derive(Serialize, Deserialize)]
 pub(crate) struct IndexFile<'s> {
     pub(in crate::plugin) api_version: Version,
     pub(in crate::plugin) entries: RapidHashMap<Cow<'s, str>, Entry<'s>>,
-    pub(in crate::plugin) pipelines: PipelineIndex<'s>,
+    pub(in crate::plugin) pipelines: Vec<PipelineEntry<'s>>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub(crate) struct PipelineEntry<'s> {
+    pub(in crate::plugin) shader_idx: u32,
+    pub(in crate::plugin) entry_points: EntryPoints<'s>,
 }
 
 impl<'s> IndexFile<'s> {
@@ -24,7 +29,7 @@ impl<'s> IndexFile<'s> {
         Self {
             entries: RapidHashMap::default(),
             api_version: API_VERSION,
-            pipelines: PipelineIndex::new(),
+            pipelines: Vec::new(),
         }
     }
 

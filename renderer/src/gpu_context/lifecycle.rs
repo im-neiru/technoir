@@ -7,13 +7,43 @@ use core::{
     sync::atomic::{AtomicU32, Ordering, fence},
 };
 
-use wgpu::rwh::{HasDisplayHandle, HasWindowHandle};
-
-use wgpu::{Surface, SurfaceTargetUnsafe, wgt::WgpuHasDisplayHandle};
+use wgpu::{
+    Surface, SurfaceTargetUnsafe,
+    rwh::{HasDisplayHandle, HasWindowHandle},
+    wgt::WgpuHasDisplayHandle,
+};
 
 use super::{GpuContext, GpuState};
 
 impl GpuContext {
+    #[inline]
+    pub(crate) fn get() -> Self {
+        if !try_acquire_ref() {
+            unreachable!("live GpuContext has no reference");
+        }
+
+        loop {
+            match SLOT_FLAG.load(Ordering::Acquire) {
+                UNINITIALIZED => {
+                    #[cfg(debug_assertions)]
+                    panic!("GPU state uninitialized");
+
+                    #[cfg(not(debug_assertions))]
+                    unimplemented!();
+                }
+                INITIALIZING | DESTROYING => spin_loop(),
+                INITIALIZED => {
+                    if try_acquire_ref() {
+                        return Self(PhantomData);
+                    }
+
+                    spin_loop();
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
     pub(crate) fn get_or_init(
         display_handle: Box<dyn WgpuHasDisplayHandle>,
         window_handle: impl HasDisplayHandle + HasWindowHandle,

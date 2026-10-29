@@ -1,36 +1,24 @@
 use wgpu::{
-    Instance, InstanceDescriptor,
-    rwh::{self, DisplayHandle, HasDisplayHandle, HasWindowHandle},
-    wgt::WgpuHasDisplayHandle,
+    BackendOptions, Backends, Instance, InstanceDescriptor, InstanceFlags, MemoryBudgetThresholds,
+    rwh, wgt,
 };
 
 use super::{GpuContext, GpuState};
 
 impl GpuState {
     #[inline(always)]
-    pub(super) const fn new(handle: impl HasDisplayHandle + HasWindowHandle) -> Self {
-        let display = handle.display_handle().unwrap();
+    pub(super) fn new(
+        display: Box<dyn wgt::WgpuHasDisplayHandle>,
+        _window: rwh::WindowHandle,
+    ) -> Self {
+        let instance = Instance::new(InstanceDescriptor {
+            backends: Backends::PRIMARY,
+            flags: InstanceFlags::empty(),
+            memory_budget_thresholds: MemoryBudgetThresholds::default(),
+            backend_options: BackendOptions::default(),
+            display: Some(display),
+        });
 
-        let instance = Instance::new(InstanceDescriptor::new_with_display_handle(Box::into(
-            DisplayHandleWrapper(display),
-        )));
-
-        Self { instance: () }
-    }
-}
-
-#[derive(Debug)]
-struct DisplayHandleWrapper<'a>(DisplayHandle<'a>);
-
-impl<'a> HasDisplayHandle for DisplayHandleWrapper<'a> {
-    #[inline(always)]
-    fn display_handle(&self) -> Result<DisplayHandle<'a>, rwh::HandleError> {
-        Ok(self.0)
-    }
-}
-
-impl<'a> Into<WgpuHasDisplayHandle> for DisplayHandleWrapper<'a> {
-    fn into(self) -> WgpuHasDisplayHandle {
-        todo!()
+        Self { instance }
     }
 }

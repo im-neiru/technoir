@@ -7,15 +7,16 @@ use core::{
     sync::atomic::{AtomicU32, Ordering, fence},
 };
 
-use wgpu::{
-    Instance, InstanceDescriptor,
-    rwh::{self, DisplayHandle, HasDisplayHandle, HasWindowHandle},
-};
+use wgpu::{Instance, InstanceDescriptor, rwh, wgt};
 
 use super::{GpuContext, GpuState};
 
 impl GpuContext {
-    pub(crate) fn get_or_init(handle: impl HasDisplayHandle + HasWindowHandle) -> Self {
+    #[cfg(not(all(feature = "web", any(target_arch = "wasm32", target_arch = "wasm64"))))]
+    pub(crate) fn get_or_init(
+        display: Box<dyn wgt::WgpuHasDisplayHandle>,
+        window: rwh::WindowHandle,
+    ) -> Self {
         loop {
             match SLOT_FLAG.load(Ordering::Acquire) {
                 UNINITIALIZED => {
@@ -28,7 +29,7 @@ impl GpuContext {
                         )
                         .is_ok()
                     {
-                        initialize_slot();
+                        initialize_slot(display, window);
 
                         return Self(PhantomData);
                     }
@@ -111,15 +112,11 @@ impl Drop for TransitionGuard {
     }
 }
 
-fn initialize_slot(handle: impl HasDisplayHandle + HasWindowHandle) {
+fn initialize_slot(display: Box<dyn wgt::WgpuHasDisplayHandle>, _window: rwh::WindowHandle) {
     let mut transition = TransitionGuard::new(SlotFlag::Uninitialized);
 
-    let display = handle.display_handle().unwrap();
-
     let state = GpuState {
-        instance: Instance::new(InstanceDescriptor::new_with_display_handle(Box::new(
-            DisplayHandleWrapper(display),
-        ))),
+        instance: Instance::new(InstanceDescriptor::new_with_display_handle(display)),
     };
 
     unsafe {

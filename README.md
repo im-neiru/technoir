@@ -16,3 +16,5 @@ TechNoir creates interactive and procedural wallpapers behind desktop icons usin
 ## Status
 
 Early development and initial overhaul.
+
+I have to change the format of plugins to WASM, so it can work on web browser for preview. Laua do not have a jit on browser

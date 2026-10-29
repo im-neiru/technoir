@@ -7,16 +7,15 @@ use core::{
     sync::atomic::{AtomicU32, Ordering, fence},
 };
 
-use wgpu::{Instance, InstanceDescriptor, rwh, wgt};
+use wgpu::{Surface, SurfaceTargetUnsafe, wgt::WgpuHasDisplayHandle};
 
 use super::{GpuContext, GpuState};
 
 impl GpuContext {
-    #[cfg(not(all(feature = "web", any(target_arch = "wasm32", target_arch = "wasm64"))))]
     pub(crate) fn get_or_init(
-        display: Box<dyn wgt::WgpuHasDisplayHandle>,
-        window: rwh::WindowHandle,
-    ) -> Self {
+        display_handle: Box<dyn WgpuHasDisplayHandle>,
+        surface_handle: SurfaceTargetUnsafe,
+    ) -> (Self, Surface<'static>) {
         loop {
             match SLOT_FLAG.load(Ordering::Acquire) {
                 UNINITIALIZED => {
@@ -29,15 +28,17 @@ impl GpuContext {
                         )
                         .is_ok()
                     {
-                        initialize_slot(display, window);
+                        let surface = initialize_slot(display_handle, surface_handle);
 
-                        return Self(PhantomData);
+                        return (Self(PhantomData), surface);
                     }
                 }
                 INITIALIZING | DESTROYING => spin_loop(),
                 INITIALIZED => {
                     if try_acquire_ref() {
-                        return Self(PhantomData);
+                        let surface = get_state().create_surface(surface_handle);
+
+                        return (Self(PhantomData), surface);
                     }
 
                     spin_loop();
@@ -62,7 +63,7 @@ impl Deref for GpuContext {
     type Target = GpuState;
 
     fn deref(&self) -> &Self::Target {
-        unsafe { (*SLOT.0.get()).assume_init_ref() }
+        get_state()
     }
 }
 
@@ -112,12 +113,13 @@ impl Drop for TransitionGuard {
     }
 }
 
-fn initialize_slot(display: Box<dyn wgt::WgpuHasDisplayHandle>, _window: rwh::WindowHandle) {
+fn initialize_slot(
+    display_handle: Box<dyn WgpuHasDisplayHandle>,
+    surface_handle: SurfaceTargetUnsafe,
+) -> Surface<'static> {
     let mut transition = TransitionGuard::new(SlotFlag::Uninitialized);
 
-    let state = GpuState {
-        instance: Instance::new(InstanceDescriptor::new_with_display_handle(display)),
-    };
+    let (state, surface) = GpuState::new(display_handle, surface_handle);
 
     unsafe {
         (*SLOT.0.get()).write(state);
@@ -125,6 +127,8 @@ fn initialize_slot(display: Box<dyn wgt::WgpuHasDisplayHandle>, _window: rwh::Wi
 
     REF_COUNT.store(1, Ordering::Release);
     transition.settle_to = SlotFlag::Initialized;
+
+    surface
 }
 
 fn try_acquire_ref() -> bool {
@@ -188,4 +192,9 @@ fn atomic_update(
     }
 
     Err(prev)
+}
+
+#[inline(always)]
+fn get_state() -> &'static GpuState {
+    unsafe { (*SLOT.0.get()).assume_init_ref() }
 }

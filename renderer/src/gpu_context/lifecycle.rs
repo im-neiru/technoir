@@ -7,6 +7,8 @@ use core::{
     sync::atomic::{AtomicU32, Ordering, fence},
 };
 
+use wgpu::rwh::{HasDisplayHandle, HasWindowHandle};
+
 use wgpu::{Surface, SurfaceTargetUnsafe, wgt::WgpuHasDisplayHandle};
 
 use super::{GpuContext, GpuState};
@@ -14,8 +16,16 @@ use super::{GpuContext, GpuState};
 impl GpuContext {
     pub(crate) fn get_or_init(
         display_handle: Box<dyn WgpuHasDisplayHandle>,
-        surface_handle: SurfaceTargetUnsafe,
+        window_handle: impl HasDisplayHandle + HasWindowHandle,
     ) -> (Self, Surface<'static>) {
+        let raw_display_handle = window_handle.display_handle().unwrap().as_raw();
+        let raw_window_handle = window_handle.window_handle().unwrap().as_raw();
+
+        let surface_handle = SurfaceTargetUnsafe::RawHandle {
+            raw_display_handle: Some(raw_display_handle),
+            raw_window_handle,
+        };
+
         loop {
             match SLOT_FLAG.load(Ordering::Acquire) {
                 UNINITIALIZED => {

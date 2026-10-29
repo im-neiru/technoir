@@ -3,10 +3,11 @@ use crate::utils::ReadMappedFile;
 mod installer;
 mod meta;
 
-use meta::IndexFile;
+use meta::{Codes, IndexFile};
 
 pub(crate) struct PluginRegistry {
     index: ReadMappedFile,
+    programs: Codes,
 }
 
 impl PluginRegistry {

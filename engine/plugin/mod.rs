@@ -1,5 +1,7 @@
+mod consts;
 mod factory;
 mod loader;
+mod registry;
 mod wallpaper_instance;
 
 pub(crate) use loader::PluginLoader;

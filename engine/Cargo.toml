@@ -12,6 +12,7 @@ name = "pack_sandbox"
 path = "pack_sandbox.rs"
 
 [dependencies]
+blake2.workspace = true
 bytemuck.workspace = true
 crossbeam-queue.workspace = true
 glam.workspace = true
@@ -35,6 +36,7 @@ cbor2 .workspace = true
 libloading.workspace = true
 chrono.workspace = true
 zip.workspace = true
+zstd.workspace = true
 
 ui.path = "../ui"
 

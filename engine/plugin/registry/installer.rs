@@ -76,7 +76,7 @@ impl PluginRegistry {
             return Ok(());
         }
 
-        self.programs.push(bytes)
+        // self.programs.push(bytes)
 
         index_file.entries.insert(
             id,

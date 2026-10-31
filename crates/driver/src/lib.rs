@@ -16,3 +16,6 @@ enum UiWindowInner {
     #[cfg(target_os = "windows")]
     Win32(win32::UiWindow),
 }
+
+#[cfg(target_os = "windows")]
+pub use win32::run;

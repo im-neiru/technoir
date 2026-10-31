@@ -18,4 +18,8 @@ pub enum GraphicsInitError {
     #[error("failed to create the rendering surface")]
     #[diagnostic(code(graphics::init::create_surface))]
     CreateSurface,
+
+    #[error("incompatible surface")]
+    #[diagnostic(code(graphics::init::incompatible_surface))]
+    IncompatibleSurface,
 }

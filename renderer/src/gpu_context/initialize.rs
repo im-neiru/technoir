@@ -4,6 +4,8 @@ use wgpu::{
     RequestAdapterOptions, Surface, SurfaceTargetUnsafe, Trace, wgt::WgpuHasDisplayHandle,
 };
 
+use crate::errors::GraphicsInitError;
+
 use super::GpuState;
 
 impl GpuState {
@@ -11,7 +13,7 @@ impl GpuState {
     pub(super) fn new(
         display_handle: Box<dyn WgpuHasDisplayHandle>,
         surface_handle: SurfaceTargetUnsafe,
-    ) -> (Self, Surface<'static>) {
+    ) -> Result<(Self, Surface<'static>), GraphicsInitError> {
         let instance = Instance::new(InstanceDescriptor {
             backends: Backends::PRIMARY,
             flags: InstanceFlags::empty(),
@@ -20,11 +22,15 @@ impl GpuState {
             display: Some(display_handle),
         });
 
-        let surface = create_surface(&instance, surface_handle);
+        let surface = unsafe {
+            instance
+                .create_surface_unsafe(surface_handle)
+                .map_err(|_| GraphicsInitError::CreateSurface)?
+        };
 
-        let (adapter, device, queue) = utils::block_on(request_device(&instance, &surface));
+        let (adapter, device, queue) = utils::block_on(request_device(&instance, &surface))?;
 
-        (
+        Ok((
             Self {
                 instance,
                 adapter,
@@ -32,27 +38,26 @@ impl GpuState {
                 queue,
             },
             surface,
-        )
+        ))
     }
 
-    #[inline(always)]
-    pub(super) fn create_surface(&self, surface_handle: SurfaceTargetUnsafe) -> Surface<'static> {
-        create_surface(&self.instance, surface_handle)
+    #[inline]
+    pub(super) fn create_surface(
+        &self,
+        surface_handle: SurfaceTargetUnsafe,
+    ) -> Result<Surface<'static>, GraphicsInitError> {
+        unsafe {
+            self.instance
+                .create_surface_unsafe(surface_handle)
+                .map_err(|_| GraphicsInitError::CreateSurface)
+        }
     }
-}
-
-#[inline]
-pub(super) fn create_surface(
-    instance: &Instance,
-    surface_handle: SurfaceTargetUnsafe,
-) -> Surface<'static> {
-    unsafe { instance.create_surface_unsafe(surface_handle).unwrap() }
 }
 
 async fn request_device(
     instance: &Instance,
     surface: &Surface<'static>,
-) -> (Adapter, Device, Queue) {
+) -> Result<(Adapter, Device, Queue), GraphicsInitError> {
     let adapter = instance
         .request_adapter(&RequestAdapterOptions {
             power_preference: PowerPreference::HighPerformance,
@@ -61,7 +66,7 @@ async fn request_device(
             apply_limit_buckets: false,
         })
         .await
-        .unwrap();
+        .map_err(|_| GraphicsInitError::NoCompatibleDevice)?;
 
     let (device, queue) = adapter
         .request_device(&DeviceDescriptor {
@@ -73,7 +78,7 @@ async fn request_device(
             trace: Trace::Off,
         })
         .await
-        .unwrap();
+        .map_err(|_| GraphicsInitError::CreateDevice)?;
 
-    (adapter, device, queue)
+    Ok((adapter, device, queue))
 }

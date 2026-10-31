@@ -21,6 +21,7 @@ parking_lot = "0.13.0"
 semver = { version = "1.0.28", features = ["serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
 smol = "2.0.2"
+miette = "7.6.0"
 thiserror = "2.0.21"
 triomphe = "0.1.17"
 toml = "1.1.8"

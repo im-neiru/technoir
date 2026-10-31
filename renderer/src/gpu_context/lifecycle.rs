@@ -13,6 +13,8 @@ use wgpu::{
     wgt::WgpuHasDisplayHandle,
 };
 
+use crate::errors::GraphicsInitError;
+
 use super::{GpuContext, GpuState};
 
 impl GpuContext {
@@ -47,9 +49,15 @@ impl GpuContext {
     pub(crate) fn get_or_init(
         display_handle: Box<dyn WgpuHasDisplayHandle>,
         window_handle: impl HasDisplayHandle + HasWindowHandle,
-    ) -> (Self, Surface<'static>) {
-        let raw_display_handle = window_handle.display_handle().unwrap().as_raw();
-        let raw_window_handle = window_handle.window_handle().unwrap().as_raw();
+    ) -> Result<(Self, Surface<'static>), GraphicsInitError> {
+        let raw_display_handle = window_handle
+            .display_handle()
+            .map_err(|_| GraphicsInitError::GetWindowHandle)?
+            .as_raw();
+        let raw_window_handle = window_handle
+            .window_handle()
+            .map_err(|_| GraphicsInitError::GetWindowHandle)?
+            .as_raw();
 
         let surface_handle = SurfaceTargetUnsafe::RawHandle {
             raw_display_handle: Some(raw_display_handle),
@@ -68,17 +76,17 @@ impl GpuContext {
                         )
                         .is_ok()
                     {
-                        let surface = initialize_slot(display_handle, surface_handle);
+                        let surface = initialize_slot(display_handle, surface_handle)?;
 
-                        return (Self(PhantomData), surface);
+                        return Ok((Self(PhantomData), surface));
                     }
                 }
                 INITIALIZING | DESTROYING => spin_loop(),
                 INITIALIZED => {
                     if try_acquire_ref() {
-                        let surface = get_state().create_surface(surface_handle);
+                        let surface = get_state().create_surface(surface_handle)?;
 
-                        return (Self(PhantomData), surface);
+                        return Ok((Self(PhantomData), surface));
                     }
 
                     spin_loop();
@@ -156,10 +164,10 @@ impl Drop for TransitionGuard {
 fn initialize_slot(
     display_handle: Box<dyn WgpuHasDisplayHandle>,
     surface_handle: SurfaceTargetUnsafe,
-) -> Surface<'static> {
+) -> Result<Surface<'static>, GraphicsInitError> {
     let mut transition = TransitionGuard::new(SlotFlag::Uninitialized);
 
-    let (state, surface) = GpuState::new(display_handle, surface_handle);
+    let (state, surface) = GpuState::new(display_handle, surface_handle)?;
 
     unsafe {
         (*SLOT.0.get()).write(state);
@@ -168,7 +176,7 @@ fn initialize_slot(
     REF_COUNT.store(1, Ordering::Release);
     transition.settle_to = SlotFlag::Initialized;
 
-    surface
+    Ok(surface)
 }
 
 fn try_acquire_ref() -> bool {

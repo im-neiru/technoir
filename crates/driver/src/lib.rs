@@ -1,6 +1,8 @@
 #[cfg(target_os = "windows")]
 mod win32;
 
+pub mod errors;
+
 pub struct WallpaperWindow(WallpaperWindowInner);
 
 enum WallpaperWindowInner {

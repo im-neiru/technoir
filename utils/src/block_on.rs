@@ -1,10 +1,14 @@
-use std::{
+use core::{
     any::Any,
     future::Future,
     mem::ManuallyDrop,
-    panic::{AssertUnwindSafe, catch_unwind, resume_unwind},
+    panic::AssertUnwindSafe,
     pin::{Pin, pin},
     task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
+};
+
+use std::{
+    panic::{catch_unwind, resume_unwind},
     thread,
 };
 
@@ -22,13 +26,13 @@ where
     let future_slot = Mutex::new(pinned_future);
 
     let (shared_ref, future_slot_ref, waker_ref) = (&*shared, &future_slot, &waker);
-    let helper_count = total_thread_count() - 1;
+    let worker_count = get_worker_count();
 
     let finished_outcome = thread::scope(|scope| {
-        let helper_threads: Vec<_> = (0..helper_count)
-            .filter_map(|helper_index| {
+        let helper_threads: Vec<_> = (0..worker_count)
+            .filter_map(|idx| {
                 thread::Builder::new()
-                    .name(format!("block-on-helper-{helper_index}"))
+                    .name(format!("block_on_worker_{idx}"))
                     .spawn_scoped(scope, move || {
                         drive_future(shared_ref, future_slot_ref, waker_ref)
                     })
@@ -56,7 +60,7 @@ where
 const MIN_TOTAL_THREADS: usize = 2;
 const MAX_TOTAL_THREADS: usize = 6;
 
-fn total_thread_count() -> usize {
+fn get_worker_count() -> usize {
     let Ok(available) = thread::available_parallelism() else {
         return MIN_TOTAL_THREADS;
     };

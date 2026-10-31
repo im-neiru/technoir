@@ -8,3 +8,5 @@ web = []
 
 [dependencies]
 wgpu.workspace = true
+
+utils.path = "../utils"

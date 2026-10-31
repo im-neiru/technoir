@@ -10,7 +10,7 @@ use super::GpuState;
 
 impl GpuState {
     #[inline(always)]
-    pub(super) fn new(
+    pub(super) async fn new(
         display_handle: Box<dyn WgpuHasDisplayHandle>,
         surface_handle: SurfaceTargetUnsafe,
     ) -> Result<(Self, Surface<'static>), GraphicsInitError> {
@@ -28,7 +28,7 @@ impl GpuState {
                 .map_err(|_| GraphicsInitError::CreateSurface)?
         };
 
-        let (adapter, device, queue) = utils::block_on(request_device(&instance, &surface))?;
+        let (adapter, device, queue) = request_device(&instance, &surface).await?;
 
         Ok((
             Self {

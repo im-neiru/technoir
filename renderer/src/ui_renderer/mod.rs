@@ -8,11 +8,11 @@ pub struct UiRenderer {
 
 impl UiRenderer {
     #[inline]
-    pub fn new(
+    pub async fn new(
         display_handle: Box<dyn wgpu::wgt::WgpuHasDisplayHandle>,
         window_handle: impl HasDisplayHandle + HasWindowHandle,
     ) -> Result<Self, GraphicsInitError> {
-        let (ctx, _surface) = GpuContext::get_or_init(display_handle, window_handle)?;
+        let (ctx, _surface) = GpuContext::get_or_init(display_handle, window_handle).await?;
 
         Ok(Self { ctx })
     }

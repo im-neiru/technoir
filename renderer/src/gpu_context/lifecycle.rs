@@ -46,7 +46,7 @@ impl GpuContext {
         }
     }
 
-    pub(crate) fn get_or_init(
+    pub(crate) async fn get_or_init(
         display_handle: Box<dyn WgpuHasDisplayHandle>,
         window_handle: impl HasDisplayHandle + HasWindowHandle,
     ) -> Result<(Self, Surface<'static>), GraphicsInitError> {
@@ -76,7 +76,7 @@ impl GpuContext {
                         )
                         .is_ok()
                     {
-                        let surface = initialize_slot(display_handle, surface_handle)?;
+                        let surface = initialize_slot(display_handle, surface_handle).await?;
 
                         return Ok((Self(PhantomData), surface));
                     }
@@ -161,13 +161,13 @@ impl Drop for TransitionGuard {
     }
 }
 
-fn initialize_slot(
+async fn initialize_slot(
     display_handle: Box<dyn WgpuHasDisplayHandle>,
     surface_handle: SurfaceTargetUnsafe,
 ) -> Result<Surface<'static>, GraphicsInitError> {
     let mut transition = TransitionGuard::new(SlotFlag::Uninitialized);
 
-    let (state, surface) = GpuState::new(display_handle, surface_handle)?;
+    let (state, surface) = GpuState::new(display_handle, surface_handle).await?;
 
     unsafe {
         (*SLOT.0.get()).write(state);

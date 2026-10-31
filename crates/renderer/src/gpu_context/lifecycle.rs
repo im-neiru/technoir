@@ -9,8 +9,8 @@ use core::{
 };
 
 use wgpu::{
-    Surface, SurfaceTargetUnsafe,
-    rwh::{HasDisplayHandle, HasWindowHandle},
+    Surface, SurfaceConfiguration, SurfaceTargetUnsafe,
+    rwh::{HasDisplayHandle, HasWindowHandle, RawWindowHandle},
     wgt::WgpuHasDisplayHandle,
 };
 
@@ -49,23 +49,19 @@ impl GpuContext {
 
     pub(crate) async fn get_or_init(
         display_handle: Box<dyn WgpuHasDisplayHandle>,
-        window_handle: impl HasDisplayHandle + HasWindowHandle,
+        window_handle: RawWindowHandle,
         width: NonZeroU16,
         height: NonZeroU16,
         desired_maximum_frame_latency: NonZeroU8,
-    ) -> Result<(Self, Surface<'static>), GraphicsInitError> {
-        let raw_display_handle = window_handle
+    ) -> Result<(Self, Surface<'static>, SurfaceConfiguration), GraphicsInitError> {
+        let raw_display_handle = display_handle
             .display_handle()
-            .map_err(|_| GraphicsInitError::GetWindowHandle)?
-            .as_raw();
-        let raw_window_handle = window_handle
-            .window_handle()
             .map_err(|_| GraphicsInitError::GetWindowHandle)?
             .as_raw();
 
         let surface_handle = SurfaceTargetUnsafe::RawHandle {
             raw_display_handle: Some(raw_display_handle),
-            raw_window_handle,
+            raw_window_handle: window_handle,
         };
 
         loop {
@@ -80,22 +76,29 @@ impl GpuContext {
                         )
                         .is_ok()
                     {
-                        let surface = initialize_slot(display_handle, surface_handle).await?;
+                        let (surface, config) = initialize_slot(
+                            display_handle,
+                            surface_handle,
+                            width,
+                            height,
+                            desired_maximum_frame_latency,
+                        )
+                        .await?;
 
-                        return Ok((Self(PhantomData), surface));
+                        return Ok((Self(PhantomData), surface, config));
                     }
                 }
                 INITIALIZING | DESTROYING => spin_loop(),
                 INITIALIZED => {
                     if try_acquire_ref() {
-                        let surface = get_state().create_surface(
+                        let (surface, config) = get_state().create_surface(
                             surface_handle,
                             width,
                             height,
                             desired_maximum_frame_latency,
                         )?;
 
-                        return Ok((Self(PhantomData), surface));
+                        return Ok((Self(PhantomData), surface, config));
                     }
 
                     spin_loop();
@@ -176,7 +179,7 @@ async fn initialize_slot(
     width: NonZeroU16,
     height: NonZeroU16,
     desired_maximum_frame_latency: NonZeroU8,
-) -> Result<Surface<'static>, GraphicsInitError> {
+) -> Result<(Surface<'static>, SurfaceConfiguration), GraphicsInitError> {
     let mut transition = TransitionGuard::new(SlotFlag::Uninitialized);
 
     let (state, surface) = GpuState::new(

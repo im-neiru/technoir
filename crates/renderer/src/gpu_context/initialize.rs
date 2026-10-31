@@ -4,11 +4,11 @@ use wgpu::{
     Adapter, BackendOptions, Backends, CompositeAlphaMode, Device, DeviceDescriptor,
     ExperimentalFeatures, Instance, InstanceDescriptor, InstanceFlags, MemoryBudgetThresholds,
     MemoryHints, PowerPreference, PresentMode, Queue, RequestAdapterOptions, Surface,
-    SurfaceColorSpace, SurfaceTargetUnsafe, TextureFormat, TextureUsages, Trace,
-    wgt::{SurfaceConfiguration, WgpuHasDisplayHandle},
+    SurfaceColorSpace, SurfaceConfiguration, SurfaceTargetUnsafe, TextureFormat, TextureUsages,
+    Trace, wgt::WgpuHasDisplayHandle,
 };
 
-use crate::errors::GraphicsInitError;
+use crate::{TargetSurface, errors::GraphicsInitError};
 
 use super::GpuState;
 
@@ -20,7 +20,7 @@ impl GpuState {
         width: NonZeroU16,
         height: NonZeroU16,
         desired_maximum_frame_latency: NonZeroU8,
-    ) -> Result<(Self, Surface<'static>), GraphicsInitError> {
+    ) -> Result<(Self, Surface<'static>, SurfaceConfiguration), GraphicsInitError> {
         let instance = Instance::new(InstanceDescriptor {
             backends: Backends::PRIMARY,
             flags: InstanceFlags::empty(),
@@ -37,7 +37,7 @@ impl GpuState {
 
         let (adapter, device, queue) = request_device(&instance, &surface).await?;
 
-        configure_surface(
+        let config = configure_surface(
             &adapter,
             &device,
             &surface,
@@ -54,6 +54,7 @@ impl GpuState {
                 queue,
             },
             surface,
+            config,
         ))
     }
 
@@ -64,14 +65,14 @@ impl GpuState {
         width: NonZeroU16,
         height: NonZeroU16,
         desired_maximum_frame_latency: NonZeroU8,
-    ) -> Result<Surface<'static>, GraphicsInitError> {
+    ) -> Result<(Surface<'static>, SurfaceConfiguration), GraphicsInitError> {
         let surface = unsafe {
             self.instance
                 .create_surface_unsafe(surface_handle)
                 .map_err(|_| GraphicsInitError::CreateSurface)?
         };
 
-        configure_surface(
+        let config = configure_surface(
             &self.adapter,
             &self.device,
             &surface,
@@ -80,7 +81,7 @@ impl GpuState {
             desired_maximum_frame_latency,
         )?;
 
-        Ok(surface)
+        Ok((surface, config))
     }
 }
 
@@ -120,7 +121,7 @@ fn configure_surface(
     width: NonZeroU16,
     height: NonZeroU16,
     desired_maximum_frame_latency: NonZeroU8,
-) -> Result<(), GraphicsInitError> {
+) -> Result<SurfaceConfiguration, GraphicsInitError> {
     let caps = surface.get_capabilities(&adapter);
 
     let usage = caps.usages & (TextureUsages::RENDER_ATTACHMENT | TextureUsages::STORAGE_BINDING);
@@ -193,5 +194,5 @@ fn configure_surface(
 
     surface.configure(device, &config);
 
-    Ok(())
+    Ok(config)
 }

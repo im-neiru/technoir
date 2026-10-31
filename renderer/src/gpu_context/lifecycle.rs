@@ -3,6 +3,7 @@ use core::{
     hint::spin_loop,
     marker::PhantomData,
     mem::MaybeUninit,
+    num::{NonZeroU8, NonZeroU16},
     ops::Deref,
     sync::atomic::{AtomicU32, Ordering, fence},
 };
@@ -49,6 +50,9 @@ impl GpuContext {
     pub(crate) async fn get_or_init(
         display_handle: Box<dyn WgpuHasDisplayHandle>,
         window_handle: impl HasDisplayHandle + HasWindowHandle,
+        width: NonZeroU16,
+        height: NonZeroU16,
+        desired_maximum_frame_latency: NonZeroU8,
     ) -> Result<(Self, Surface<'static>), GraphicsInitError> {
         let raw_display_handle = window_handle
             .display_handle()
@@ -84,7 +88,12 @@ impl GpuContext {
                 INITIALIZING | DESTROYING => spin_loop(),
                 INITIALIZED => {
                     if try_acquire_ref() {
-                        let surface = get_state().create_surface(surface_handle)?;
+                        let surface = get_state().create_surface(
+                            surface_handle,
+                            width,
+                            height,
+                            desired_maximum_frame_latency,
+                        )?;
 
                         return Ok((Self(PhantomData), surface));
                     }
@@ -164,10 +173,20 @@ impl Drop for TransitionGuard {
 async fn initialize_slot(
     display_handle: Box<dyn WgpuHasDisplayHandle>,
     surface_handle: SurfaceTargetUnsafe,
+    width: NonZeroU16,
+    height: NonZeroU16,
+    desired_maximum_frame_latency: NonZeroU8,
 ) -> Result<Surface<'static>, GraphicsInitError> {
     let mut transition = TransitionGuard::new(SlotFlag::Uninitialized);
 
-    let (state, surface) = GpuState::new(display_handle, surface_handle).await?;
+    let (state, surface) = GpuState::new(
+        display_handle,
+        surface_handle,
+        width,
+        height,
+        desired_maximum_frame_latency,
+    )
+    .await?;
 
     unsafe {
         (*SLOT.0.get()).write(state);

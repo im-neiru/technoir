@@ -4,5 +4,5 @@ mod wallpaper_renderer;
 
 pub mod errors;
 
-pub use ui_renderer::UiRenderer;
+pub use ui_renderer::{UiRenderer, UiTarget};
 pub use wallpaper_renderer::WallpaperRenderer;

@@ -10,7 +10,7 @@ use core::{
 
 use wgpu::{
     Surface, SurfaceConfiguration, SurfaceTargetUnsafe,
-    rwh::{HasDisplayHandle, HasWindowHandle, RawWindowHandle},
+    rwh::{HasDisplayHandle, HasWindowHandle},
     wgt::WgpuHasDisplayHandle,
 };
 
@@ -49,7 +49,7 @@ impl GpuContext {
 
     pub(crate) async fn get_or_init(
         display_handle: Box<dyn WgpuHasDisplayHandle>,
-        window_handle: RawWindowHandle,
+        window_handle: impl HasWindowHandle,
         width: NonZeroU16,
         height: NonZeroU16,
         desired_maximum_frame_latency: NonZeroU8,
@@ -58,10 +58,14 @@ impl GpuContext {
             .display_handle()
             .map_err(|_| GraphicsInitError::GetWindowHandle)?
             .as_raw();
+        let raw_window_handle = window_handle
+            .window_handle()
+            .map_err(|_| GraphicsInitError::GetWindowHandle)?
+            .as_raw();
 
         let surface_handle = SurfaceTargetUnsafe::RawHandle {
             raw_display_handle: Some(raw_display_handle),
-            raw_window_handle: window_handle,
+            raw_window_handle,
         };
 
         loop {
@@ -182,7 +186,7 @@ async fn initialize_slot(
 ) -> Result<(Surface<'static>, SurfaceConfiguration), GraphicsInitError> {
     let mut transition = TransitionGuard::new(SlotFlag::Uninitialized);
 
-    let (state, surface) = GpuState::new(
+    let (state, surface, config) = GpuState::new(
         display_handle,
         surface_handle,
         width,
@@ -198,7 +202,7 @@ async fn initialize_slot(
     REF_COUNT.store(1, Ordering::Release);
     transition.settle_to = SlotFlag::Initialized;
 
-    Ok(surface)
+    Ok((surface, config))
 }
 
 fn try_acquire_ref() -> bool {

@@ -1,5 +1,0 @@
-// import {
-//   "username/cosmic_bubble" @lib,
-// }
-
-pkgtype(kind: "executable")

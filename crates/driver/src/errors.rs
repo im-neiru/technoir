@@ -1,6 +1,9 @@
+use renderer::errors::GraphicsInitError;
+
 #[derive(Clone, Copy, Debug)]
 pub enum StartupError {
     WindowOs(WindowsOsError),
+    GraphicsInit(GraphicsInitError),
 }
 
 #[derive(Clone, Copy, Debug)]

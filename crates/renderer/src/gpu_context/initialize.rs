@@ -8,7 +8,7 @@ use wgpu::{
     Trace, wgt::WgpuHasDisplayHandle,
 };
 
-use crate::{TargetSurface, errors::GraphicsInitError};
+use crate::errors::GraphicsInitError;
 
 use super::GpuState;
 

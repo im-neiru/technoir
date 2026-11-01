@@ -1,6 +1,6 @@
 use core::num::{NonZeroU8, NonZeroU16};
 
-use wgpu::{Surface, SurfaceConfiguration, rwh::RawWindowHandle};
+use wgpu::{Surface, SurfaceConfiguration, rwh::HasWindowHandle, wgt::WgpuHasDisplayHandle};
 
 use crate::{UiRenderer, errors::GraphicsInitError, gpu_context::GpuContext};
 
@@ -13,14 +13,14 @@ pub struct TargetSurface {
 impl TargetSurface {
     #[inline]
     pub async fn new(
-        display_handle: Box<dyn wgpu::wgt::WgpuHasDisplayHandle>,
-        window_handle: RawWindowHandle,
+        display_handle: impl Into<Box<dyn WgpuHasDisplayHandle>>,
+        window_handle: impl HasWindowHandle,
         width: NonZeroU16,
         height: NonZeroU16,
         desired_maximum_frame_latency: NonZeroU8,
     ) -> Result<Self, GraphicsInitError> {
         let (ctx, surface, config) = GpuContext::get_or_init(
-            display_handle,
+            display_handle.into(),
             window_handle,
             width,
             height,
@@ -46,7 +46,7 @@ impl TargetSurface {
     }
 
     #[inline(always)]
-    pub fn renderer(&self) -> UiRenderer {
+    pub fn renderer<'s>(&'s self) -> UiRenderer<'s> {
         UiRenderer { ctx: &self.ctx }
     }
 }

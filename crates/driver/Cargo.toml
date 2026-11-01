@@ -5,3 +5,7 @@ edition = "2024"
 
 [dependencies]
 windows-sys.workspace = true
+pollster.workspace = true
+
+utils.path = "../utils"
+renderer.path = "../renderer"

@@ -1,0 +1,5 @@
+import {
+  "im-neiru/technoir/logcat" @logcat,
+}
+
+warnings = "-44"

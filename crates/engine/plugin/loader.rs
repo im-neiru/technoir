@@ -46,7 +46,7 @@ impl PluginLoader {
 async fn enumerate_root(
     root: &Path,
     seen_files: &mut RapidHashSet<PathBuf>,
-    plugins: &mut Vec<PluginPackage>,
+    plugins: &mut Vec<PluginPackage<'_>>,
 ) {
     let Ok(mut entries) = fs::read_dir(root).await else {
         return;
@@ -76,8 +76,8 @@ async fn enumerate_root(
             continue;
         }
 
-        if let Some(plugin) = PluginManifest::read_package(&path).await {
-            plugins.push(plugin);
-        }
+        // if let Some(plugin) = PluginManifest::read_package(&path).await {
+        //     plugins.push(plugin);
+        // }
     }
 }

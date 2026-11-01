@@ -40,5 +40,5 @@ pub struct MakeWallpaperContext {
 }
 
 impl UserData for MakeWallpaperContext {
-    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {}
+    fn add_fields<F: UserDataFields<Self>>(_fields: &mut F) {}
 }

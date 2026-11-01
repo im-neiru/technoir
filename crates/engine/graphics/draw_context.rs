@@ -1,6 +1,6 @@
 use wgpu::TextureView;
 
-use crate::graphics::{Context, WindowSurface};
+use crate::graphics::Context;
 
 pub struct DrawContext<'ctx, 'v> {
     ctx: &'ctx Context,

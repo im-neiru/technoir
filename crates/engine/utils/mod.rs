@@ -8,7 +8,7 @@ mod program_data_path;
 mod read_mapped_file;
 
 #[cfg(target_family = "windows")]
-pub(crate) use desktop_handles::{DesktopHandles, get_desktop_handles};
+pub(crate) use desktop_handles::get_desktop_handles;
 
 #[cfg(target_family = "windows")]
 pub use desktop_watcher::DesktopWatcher;

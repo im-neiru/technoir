@@ -29,7 +29,7 @@ impl PluginRegistry {
         Ok(())
     }
 
-    fn read_manifest(path: &Path) -> Result<PluginManifest, PluginInstallError> {
+    fn read_manifest(path: &Path) -> Result<PluginManifest<'_>, PluginInstallError> {
         let mapped = ReadMappedFile::open(path)?;
 
         if mapped.is_empty() {

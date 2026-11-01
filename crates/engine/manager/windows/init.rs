@@ -12,10 +12,7 @@ use windows_sys::{
     Win32::{
         Foundation::{ERROR_CLASS_ALREADY_EXISTS, GetLastError},
         UI::{
-            Shell::{
-                NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NOTIFYICONDATAW,
-                Shell_NotifyIconW,
-            },
+            Shell::{NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NOTIFYICONDATAW, Shell_NotifyIconW},
             WindowsAndMessaging::*,
         },
     },

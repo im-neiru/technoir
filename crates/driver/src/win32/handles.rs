@@ -15,10 +15,10 @@ impl HasDisplayHandle for DisplayHandle {
     }
 }
 
-impl Into<Box<dyn WgpuHasDisplayHandle>> for DisplayHandle {
+impl From<DisplayHandle> for Box<dyn WgpuHasDisplayHandle> {
     #[inline]
-    fn into(self) -> Box<dyn WgpuHasDisplayHandle> {
-        Box::new(Self)
+    fn from(val: DisplayHandle) -> Self {
+        Box::new(DisplayHandle)
     }
 }
 

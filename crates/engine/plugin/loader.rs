@@ -4,7 +4,7 @@ use mlua::prelude::*;
 use rapidhash::RapidHashSet;
 use smol::{fs, stream::StreamExt};
 
-use super::package::{Plugin, PluginManifest, PluginPackage};
+use super::package::PluginPackage;
 use crate::utils::program_data_path;
 
 pub(crate) struct PluginLoader {
@@ -22,7 +22,7 @@ impl PluginLoader {
     }
 
     #[inline]
-    pub(crate) async fn enumerate_plugins(&self) -> Vec<PluginPackage> {
+    pub(crate) async fn enumerate_plugins(&self) -> Vec<PluginPackage<'_>> {
         let mut plugins = Vec::new();
         let mut seen_files = RapidHashSet::default();
 
@@ -46,7 +46,7 @@ impl PluginLoader {
 async fn enumerate_root(
     root: &Path,
     seen_files: &mut RapidHashSet<PathBuf>,
-    plugins: &mut Vec<PluginPackage<'_>>,
+    _plugins: &mut Vec<PluginPackage<'_>>,
 ) {
     let Ok(mut entries) = fs::read_dir(root).await else {
         return;

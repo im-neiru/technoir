@@ -1,14 +1,4 @@
-use std::{
-    io::{Cursor, Read},
-    path::Path,
-};
-
-use image::EncodableLayout;
-use mlua::{Function, Lua};
-use rapidhash::{HashMapExt, RapidHashMap};
-use zip::ZipArchive;
-
-use crate::{plugin::factory::PluginFactory, utils::ReadMappedFile};
+use crate::utils::ReadMappedFile;
 
 const MANIFEST_NAME: &str = "technoir.cbor";
 
@@ -19,7 +9,7 @@ pub(crate) struct PluginPackage<'s> {
 
 impl<'s> PluginPackage<'s> {
     #[inline]
-    pub(crate) fn info(&self) -> &super::Plugin {
+    pub(crate) fn info(&self) -> &super::Plugin<'_> {
         &self.manifest.plugin
     }
 }

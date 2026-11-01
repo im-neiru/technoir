@@ -37,7 +37,7 @@ impl WallpaperDriver {
 
         // just select the last for now
 
-        let plugin = plugins.pop().unwrap();
+        let _plugin = plugins.pop().unwrap();
 
         // let factory = plugin.into_factory().unwrap();
 

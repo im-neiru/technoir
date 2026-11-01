@@ -10,11 +10,11 @@ interface logcat {
     }
 
     variant value {
-        string(string),
-        bool(bool),
+        text(string),
+        boolean(bool),
         signed(s64),
         unsigned(u64),
-        float(f64),
+        floating(f64),
     }
 
     record field {

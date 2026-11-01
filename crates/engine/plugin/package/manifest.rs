@@ -73,11 +73,11 @@ fn default_pipelines<'s>() -> Cow<'s, str> {
 pub struct Pipelines<'s>(pub RapidHashMap<String, Pipeline<'s>>);
 
 impl<'s> Pipelines<'s> {
-    pub fn get(&self, name: &str) -> Option<&Pipeline> {
+    pub fn get(&self, name: &str) -> Option<&Pipeline<'_>> {
         self.0.get(name)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&String, &Pipeline)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Pipeline<'_>)> {
         self.0.iter()
     }
 }

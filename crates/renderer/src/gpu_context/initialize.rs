@@ -122,7 +122,7 @@ fn configure_surface(
     height: NonZeroU16,
     desired_maximum_frame_latency: NonZeroU8,
 ) -> Result<SurfaceConfiguration, GraphicsInitError> {
-    let caps = surface.get_capabilities(&adapter);
+    let caps = surface.get_capabilities(adapter);
 
     let usage = caps.usages & (TextureUsages::RENDER_ATTACHMENT | TextureUsages::STORAGE_BINDING);
 

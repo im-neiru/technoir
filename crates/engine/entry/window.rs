@@ -5,11 +5,7 @@ use core::{
 
 use raw_window_handle as rwh;
 
-use crate::{
-    manager::Manager,
-    plugin::{PluginLoader, package::Packager},
-    wallpaper::WallpaperDriver,
-};
+use crate::{manager::Manager, plugin::PluginLoader, wallpaper::WallpaperDriver};
 
 pub struct Entry {
     pub(crate) hinstance: NonNull<c_void>,

@@ -8,7 +8,7 @@ use core::{
 
 use crossbeam_queue::SegQueue;
 use windows_sys::Win32::{
-    Foundation::{FALSE, HWND, POINT, RECT, TRUE},
+    Foundation::{FALSE, HWND, RECT, TRUE},
     Graphics::{
         Dwm::{DWMWA_CLOAKED, DwmGetWindowAttribute},
         Gdi::{
@@ -19,9 +19,8 @@ use windows_sys::Win32::{
         Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent},
         WindowsAndMessaging::{
             EVENT_OBJECT_LOCATIONCHANGE, EVENT_SYSTEM_FOREGROUND, GWL_EXSTYLE, GWL_STYLE,
-            GetForegroundWindow, GetWindowLongW, GetWindowPlacement, GetWindowRect, IsIconic,
-            IsWindowVisible, SW_SHOWMAXIMIZED, WINDOWPLACEMENT, WINEVENT_OUTOFCONTEXT,
-            WINEVENT_SKIPOWNPROCESS, WS_CAPTION, WS_EX_TOOLWINDOW, WS_POPUP, WindowFromPoint,
+            GetWindowLongW, GetWindowRect, IsIconic, IsWindowVisible, WINEVENT_OUTOFCONTEXT,
+            WINEVENT_SKIPOWNPROCESS, WS_CAPTION, WS_EX_TOOLWINDOW, WS_POPUP,
         },
     },
 };

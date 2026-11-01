@@ -66,10 +66,7 @@ impl ReadMappedFile {
         }
 
         let Some(file) = NonNull::new(file) else {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "CreateFileW returned a null handle",
-            ));
+            return Err(io::Error::other("CreateFileW returned a null handle"));
         };
 
         let mut size = 0i64;

@@ -40,19 +40,19 @@ extern "wasm" fn mbt_ffi_free(position : Int) =
 
 ///|
 #doc(hidden)
-pub fn wasmExportClose() -> Unit {
-      @ext-wallpaper.wasmExportClose()
-}
-
-///|
-#doc(hidden)
 pub fn wasmExportPrepare() -> Unit {
-      @ext-wallpaper.wasmExportPrepare()
+      @ext-wallpaper-bindings.wasmExportPrepare()
 }
 
 ///|
 #doc(hidden)
 pub fn wasmExportDraw() -> Unit {
-      @ext-wallpaper.wasmExportDraw()
+      @ext-wallpaper-bindings.wasmExportDraw()
+}
+
+///|
+#doc(hidden)
+pub fn wasmExportClose() -> Unit {
+      @ext-wallpaper-bindings.wasmExportClose()
 }
 

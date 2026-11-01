@@ -1,5 +1,5 @@
 import {
-  "im-neiru/rain/gen/world/ext-wallpaper" @ext-wallpaper,
+  "im-neiru/rain/gen/world/ext-wallpaper-bindings" @ext-wallpaper-bindings,
 }
 
 warnings = "-44"

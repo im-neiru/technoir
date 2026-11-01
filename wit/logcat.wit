@@ -1,6 +1,6 @@
 package technoir:plugin@0.1.0;
 
-interface noir-logcat {
+interface logcat {
     enum level {
         trace,
         debug,
@@ -24,11 +24,14 @@ interface noir-logcat {
 
     type span-id = u64;
 
-    enabled: func(level: level, target: string) -> bool;
+    enabled: func(
+        level: level,
+        target: option<string>,
+    ) -> bool;
 
     event: func(
         level: level,
-        target: string,
+        target: option<string>,
         message: string,
         span: option<span-id>,
         fields: list<field>,
@@ -36,7 +39,7 @@ interface noir-logcat {
 
     span-start: func(
         level: level,
-        target: string,
+        target: option<string>,
         name: string,
         parent: option<span-id>,
         fields: list<field>,

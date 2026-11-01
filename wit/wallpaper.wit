@@ -1,14 +1,6 @@
 package technoir:plugin@0.1.0;
 
 world ext-wallpaper {
-    import noir-logcat;
-
-    export prepare: func();
-    export draw: func();
-    export close: func();
-}
-
-world ext-wallpaper-bindings {
     export prepare: func();
     export draw: func();
     export close: func();

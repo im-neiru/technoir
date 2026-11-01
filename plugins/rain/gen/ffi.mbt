@@ -40,8 +40,8 @@ extern "wasm" fn mbt_ffi_free(position : Int) =
 
 ///|
 #doc(hidden)
-pub fn wasmExportDraw() -> Unit {
-      @ext-wallpaper.wasmExportDraw()
+pub fn wasmExportClose() -> Unit {
+      @ext-wallpaper.wasmExportClose()
 }
 
 ///|
@@ -52,7 +52,7 @@ pub fn wasmExportPrepare() -> Unit {
 
 ///|
 #doc(hidden)
-pub fn wasmExportClose() -> Unit {
-      @ext-wallpaper.wasmExportClose()
+pub fn wasmExportDraw() -> Unit {
+      @ext-wallpaper.wasmExportDraw()
 }
 

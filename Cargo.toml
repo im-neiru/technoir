@@ -3,61 +3,86 @@ members = ["crates/*"]
 resolver = "3"
 
 [workspace.dependencies]
-blake2 = "0.11.0"
-bytemuck = "1.25.0"
-ciborium = "0.2.2"
+
+# audio
+wasapi = "0.26.0"
+
+# concurrency
 crossbeam-queue = "0.3.12"
-chrono = "0.4.45"
-glam = { version = "0.34.1", features = ["bytemuck"] }
-glyphon = "0.12.0"
-image = "0.25.10"
-indexmap = "2.14.0"
-rand = "0.10.3"
-rapidhash = "4.4.1"
-raw-window-handle = "0.6.2"
-rustfft = "6.4.1"
-zstd = "0.14.3"
 parking_lot = "0.13.0"
-semver = { version = "1.0.28", features = ["serde"] }
-serde = { version = "1.0.228", features = ["derive"] }
 smol = "2.0.2"
-pollster = "1.0.1"
+
+# data
+cbor2 = "1.1.6"
+ciborium = "0.2.2"
+chrono = "0.4.45"
+indexmap = "2.14.0"
+serde = { version = "1.0.228", features = ["derive"] }
+toml = "1.1.8"
+
+# error
 miette = "7.6.0"
 thiserror = "2.0.21"
-triomphe = "0.1.17"
-toml = "1.1.8"
-wasapi = "0.26.0"
-mlua = { version = "0.12.2", default-features = false, features = [
-    "luau-jit",
-    "luau-vector4",
-] }
-cbor2 = "1.1.6"
+
+# graphics
+bytemuck = "1.25.0"
+glyphon = "0.12.0"
 naga = { version = "30.0.1", features = [
     "serialize",
     "deserialize",
     "wgsl-in",
     "wgsl-out",
 ] }
+raw-window-handle = "0.6.2"
 wgpu = { version = "30.0.1", default-features = false, features = [
     "naga-ir",
     "dx12",
 ] }
+
+# image
+image = "0.25.10"
+
+# math
+glam = { version = "0.34.2", features = ["bytemuck"] }
+rustfft = "6.4.1"
+
+# random
+rand = "0.10.3"
+rapidhash = "4.4.1"
+
+# scripting
+mlua = { version = "0.12.2", default-features = false, features = [
+    "luau-jit",
+    "luau-vector4",
+] } # will be replace by wasm later
+wasmtime = "50.0.1"
+
+# serialization
+blake2 = "0.11.0"
+semver = { version = "1.0.28", features = ["serde"] }
+zip = { version = "9.2.1", default-features = false, features = ["zstd"] }
+zstd = "0.14.3"
+
+# utilities
+libloading = "0.9.0"
+pollster = "1.0.1"
+triomphe = "0.1.17"
+
+# windows
 windows-sys = { version = "0.61.2", features = [
     "Win32_Devices_Display",
     "Win32_Foundation",
-    "Win32_Graphics_Gdi",
     "Win32_Graphics_Dwm",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Com",
     "Win32_System_Console",
     "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
     "Win32_System_Threading",
     "Win32_UI_Accessibility",
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
-    "Win32_System_Com",
-    "Win32_System_Memory",
 ] }
-libloading = "0.9.0"
-zip = { version = "9.2.0", default-features = false, features = ["zstd"] }
 
 [profile.release]
 opt-level = 3

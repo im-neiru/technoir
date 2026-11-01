@@ -1,0 +1,46 @@
+package technoir:plugin@0.1.0;
+
+interface logcat {
+    enum level {
+        trace,
+        debug,
+        info,
+        warn,
+        error,
+    }
+
+    variant value {
+        string(string),
+        bool(bool),
+        signed(s64),
+        unsigned(u64),
+        float(f64),
+    }
+
+    record field {
+        name: string,
+        value: value,
+    }
+
+    type span-id = u64;
+
+    enabled: func(level: level, target: string) -> bool;
+
+    event: func(
+        level: level,
+        target: string,
+        message: string,
+        span: option<span-id>,
+        fields: list<field>,
+    );
+
+    span-start: func(
+        level: level,
+        target: string,
+        name: string,
+        parent: option<span-id>,
+        fields: list<field>,
+    ) -> option<span-id>;
+
+    span-end: func(id: span-id);
+}

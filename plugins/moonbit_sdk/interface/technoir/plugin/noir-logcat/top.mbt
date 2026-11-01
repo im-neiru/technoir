@@ -2,10 +2,10 @@
 ///|
 pub(all) enum Level {
       TRACE; DEBUG; INFO; WARN; ERROR
-} derive(Show, Eq)
+} derive(Debug, Eq)
 ///|
 #deprecated
-pub extend Level with Show::{to_string, output}
+pub extend Level with Debug::{to_repr}
 
 ///|
 #deprecated
@@ -40,10 +40,10 @@ pub(all) enum Value {
       Signed(Int64)
       Unsigned(UInt64)
       Floating(Double)
-} derive(Show, Eq)
+} derive(Debug, Eq)
 ///|
 #deprecated
-pub extend Value with Show::{to_string, output}
+pub extend Value with Debug::{to_repr}
 
 ///|
 #deprecated
@@ -52,10 +52,10 @@ pub extend Value with Eq::{not_equal, equal}
 ///|
 pub(all) struct Field {
       name : String; value : Value
-} derive(Show, Eq)
+} derive(Debug, Eq)
 ///|
 #deprecated
-pub extend Field with Show::{to_string, output}
+pub extend Field with Debug::{to_repr}
 
 ///|
 #deprecated

@@ -1,6 +1,6 @@
 package technoir:plugin@0.1.0;
 
-interface logcat {
+interface noir-logcat {
     enum level {
         trace,
         debug,

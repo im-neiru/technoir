@@ -16,7 +16,8 @@ use crate::errors::WindowsOsError;
 
 pub(in super::super) struct Worker {
     pub(super) instance: NonNull<c_void>,
-    pub(super) atom: NonZeroU16,
+    pub(super) ui_atom: NonZeroU16,
+    pub(super) wallpaper_atom: NonZeroU16,
 }
 
 impl Worker {
@@ -25,7 +26,7 @@ impl Worker {
             return Err(WindowsOsError::FailedToGetModuleHandle);
         };
 
-        let class = WNDCLASSEXW {
+        let ui_class = WNDCLASSEXW {
             cbSize: mem::size_of::<WNDCLASSEXW>() as u32,
             style: CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
             lpfnWndProc: Some(event_handler::event_handler),
@@ -40,11 +41,35 @@ impl Worker {
             hIconSm: ptr::null_mut(),
         };
 
-        let Some(atom) = NonZeroU16::new(unsafe { RegisterClassExW(&class) }) else {
+        let wallpaper_class = WNDCLASSEXW {
+            cbSize: mem::size_of::<WNDCLASSEXW>() as u32,
+            style: CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
+            lpfnWndProc: Some(event_handler::event_handler),
+            cbClsExtra: 0,
+            cbWndExtra: 0,
+            hInstance: instance.as_ptr(),
+            hIcon: ptr::null_mut(),
+            hCursor: unsafe { LoadCursorW(ptr::null_mut(), IDC_ARROW) },
+            hbrBackground: ptr::null_mut(),
+            lpszMenuName: ptr::null(),
+            lpszClassName: w!("technoir_wallpaper"),
+            hIconSm: ptr::null_mut(),
+        };
+
+        let Some(ui_atom) = NonZeroU16::new(unsafe { RegisterClassExW(&ui_class) }) else {
             return Err(WindowsOsError::FailedToRegisterWindowClass);
         };
 
-        Ok(Self { instance, atom })
+        let Some(wallpaper_atom) = NonZeroU16::new(unsafe { RegisterClassExW(&wallpaper_class) })
+        else {
+            return Err(WindowsOsError::FailedToRegisterWindowClass);
+        };
+
+        Ok(Self {
+            instance,
+            ui_atom,
+            wallpaper_atom,
+        })
     }
 
     pub(in super::super) fn run(self) {
@@ -69,15 +94,21 @@ impl Worker {
     }
 
     #[inline(always)]
-    pub(super) const fn make_in_atom(&self) -> *const u16 {
-        self.atom.get() as usize as *const u16
+    pub(super) const fn make_in_ui_atom(&self) -> *const u16 {
+        self.ui_atom.get() as usize as *const u16
+    }
+
+    #[inline(always)]
+    pub(super) const fn make_in_wallpaper_atom(&self) -> *const u16 {
+        self.wallpaper_atom.get() as usize as *const u16
     }
 }
 
 impl Drop for Worker {
     fn drop(&mut self) {
         unsafe {
-            UnregisterClassW(self.make_in_atom(), self.instance.as_ptr());
+            UnregisterClassW(self.make_in_ui_atom(), self.instance.as_ptr());
+            UnregisterClassW(self.make_in_wallpaper_atom(), self.instance.as_ptr());
         };
     }
 }

@@ -29,7 +29,7 @@ impl super::worker::Worker {
         let Some(handle) = NonNull::new(unsafe {
             CreateWindowExW(
                 0,
-                self.make_in_atom(),
+                self.make_in_ui_atom(),
                 w!("Technoir"),
                 WS_OVERLAPPEDWINDOW,
                 CW_USEDEFAULT,

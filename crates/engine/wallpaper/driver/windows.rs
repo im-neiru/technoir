@@ -39,9 +39,9 @@ impl WallpaperDriver {
 
         let plugin = plugins.pop().unwrap();
 
-        let factory = plugin.into_factory().unwrap();
+        // let factory = plugin.into_factory().unwrap();
 
-        let wallpaper = factory.new_wallpaper(&graphics);
+        // let wallpaper = factory.new_wallpaper(&graphics);
 
         Self {
             screens,

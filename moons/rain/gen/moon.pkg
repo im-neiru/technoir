@@ -1,5 +1,5 @@
 import {
-  "im-neiru/rain/gen/world/ext-wallpaper",
+  "im-neiru/rain/gen/world/ext-wallpaper" @ext-wallpaper,
 }
 
 warnings = "-44"
@@ -15,7 +15,7 @@ options(
         "mbt_ffi_cabi_realloc:cabi_realloc",
         "wasmExportClose:close",
         "wasmExportDraw:draw",
-        "wasmExportPrepare:prepare",
+        "wasmExportPrepare:prepare"
       ],
     },
   },

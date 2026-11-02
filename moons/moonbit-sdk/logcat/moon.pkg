@@ -1,3 +1,0 @@
-import {
-  "im-neiru/technoir/interface/technoir/plugin/logcat" @ffi,
-}

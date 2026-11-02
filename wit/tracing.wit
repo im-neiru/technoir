@@ -1,12 +1,12 @@
 package technoir:plugin@0.1.0;
 
-interface logcat {
+interface tracing {
     enum level {
-        trace,
-        debug,
-        info,
-        warn,
         error,
+        warn,
+        info,
+        debug,
+        trace,
     }
 
     variant value {

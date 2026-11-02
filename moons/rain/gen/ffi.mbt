@@ -2,64 +2,57 @@
 
 ///|
 pub fn mbt_ffi_cabi_realloc(
-  src_offset : Int32,
-  src_size : Int32,
-  _dst_alignment : Int32,
-  dst_size : Int32,
-) -> Int32 {
-  // malloc
-  if src_offset == 0 && src_size == 0 {
-    return mbt_ffi_malloc(dst_size)
-  }
-  // free
-  if dst_size == 0 {
-    mbt_ffi_free(src_offset)
-    return 0
-  }
-  // realloc
-  let dst = mbt_ffi_malloc(dst_size)
-  mbt_ffi_copy(
-    dst,
-    src_offset,
-    if src_size < dst_size {
-      src_size
-    } else {
-      dst_size
-    },
-  )
-  mbt_ffi_free(src_offset)
-  dst
+src_offset : Int,
+src_size : Int,
+_dst_alignment : Int,
+dst_size : Int,
+) -> Int {
+      // malloc
+      if src_offset == 0 && src_size == 0 {
+            return mbt_ffi_malloc(dst_size)
+      }
+      // free
+      if dst_size == 0 {
+            mbt_ffi_free(src_offset)
+            return 0
+      }
+      // realloc
+      let dst = mbt_ffi_malloc(dst_size)
+      mbt_ffi_copy(dst, src_offset, if src_size < dst_size { src_size } else { dst_size })
+      mbt_ffi_free(src_offset)
+      dst
 }
 
 ///|
-extern "wasm" fn mbt_ffi_copy(dest : Int32, src : Int32, len : Int32) =
-  #|(func (param i32) (param i32) (param i32) local.get 0 local.get 1 local.get 2 memory.copy)
+extern "wasm" fn mbt_ffi_copy(dest : Int, src : Int, len : Int) =
+#|(func (param i32) (param i32) (param i32) local.get 0 local.get 1 local.get 2 memory.copy)
 
 ///|
-extern "wasm" fn mbt_ffi_malloc(size : Int32) -> Int32 =
-  #|(func (param i32) (result i32) (local i32)
-  #| local.get 0 i32.const 4 i32.add call $moonbit.gc.malloc
-  #| local.tee 1 i32.const 0 call $moonbit.init_array8
-  #| local.get 1)
+extern "wasm" fn mbt_ffi_malloc(size : Int) -> Int =
+#|(func (param i32) (result i32) (local i32)
+#| local.get 0 i32.const 4 i32.add call $moonbit.gc.malloc
+#| local.tee 1 i32.const 0 call $moonbit.init_array8
+#| local.get 1)
 
 ///|
-extern "wasm" fn mbt_ffi_free(position : Int32) =
-  #|(func (param i32) local.get 0 call $moonbit.decref)
-
-///|
-#doc(hidden)
-pub fn wasmExportPrepare() -> Unit {
-  @ext-wallpaper.wasmExportPrepare()
-}
+extern "wasm" fn mbt_ffi_free(position : Int) =
+#|(func (param i32) local.get 0 call $moonbit.decref)
 
 ///|
 #doc(hidden)
 pub fn wasmExportClose() -> Unit {
-  @ext-wallpaper.wasmExportClose()
+      @ext-wallpaper.wasmExportClose()
 }
 
 ///|
 #doc(hidden)
 pub fn wasmExportDraw() -> Unit {
-  @ext-wallpaper.wasmExportDraw()
+      @ext-wallpaper.wasmExportDraw()
 }
+
+///|
+#doc(hidden)
+pub fn wasmExportPrepare() -> Unit {
+      @ext-wallpaper.wasmExportPrepare()
+}
+

@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "im-neiru/technoir/logcat"
+
+// Values
+pub fn debug(String, String) -> Unit
+
+pub fn error(String, String) -> Unit
+
+pub fn info(String, String) -> Unit
+
+pub fn trace(String, String) -> Unit
+
+pub fn warn(String, String) -> Unit
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

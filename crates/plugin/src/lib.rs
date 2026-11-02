@@ -1,3 +1,6 @@
 mod driver;
 
-pub use driver::{PluginDriver, PluginInstance, PluginPackage};
+pub use driver::{
+    INITIAL_RECORD_CAPACITY, MAX_RECORD_COUNT, PluginDriver, PluginInstance, PluginPackage,
+    TraceField, TraceLevel, TraceRecord, TraceRecordKind, TraceValue, TracingBuffer,
+};

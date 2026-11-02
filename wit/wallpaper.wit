@@ -1,0 +1,7 @@
+package technoir:plugin@0.1.0;
+
+world ext-wallpaper {
+    export prepare: func();
+    export draw: func();
+    export close: func();
+}

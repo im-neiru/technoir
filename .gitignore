@@ -1,3 +1,5 @@
 /target
 /sample
 /shaders
+/_build
+**/_build/

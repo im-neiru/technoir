@@ -1,0 +1,4 @@
+members = [
+  "moons/moonbit-sdk",
+  "moons/rain",
+]

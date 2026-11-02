@@ -10,11 +10,11 @@ interface logcat {
     }
 
     variant value {
-        string(string),
-        bool(bool),
+        text(string),
+        boolean(bool),
         signed(s64),
         unsigned(u64),
-        float(f64),
+        floating(f64),
     }
 
     record field {
@@ -24,11 +24,14 @@ interface logcat {
 
     type span-id = u64;
 
-    enabled: func(level: level, target: string) -> bool;
+    enabled: func(
+        level: level,
+        target: option<string>,
+    ) -> bool;
 
     event: func(
         level: level,
-        target: string,
+        target: option<string>,
         message: string,
         span: option<span-id>,
         fields: list<field>,
@@ -36,7 +39,7 @@ interface logcat {
 
     span-start: func(
         level: level,
-        target: string,
+        target: option<string>,
         name: string,
         parent: option<span-id>,
         fields: list<field>,

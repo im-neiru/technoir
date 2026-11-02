@@ -1,3 +1,3 @@
 mod plugin_driver;
 
-pub use plugin_driver::PluginDriver;
+pub use plugin_driver::{PluginDriver, PluginInstance, PluginPackage};

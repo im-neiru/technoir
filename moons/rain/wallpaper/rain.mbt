@@ -1,21 +1,21 @@
 ///|
 pub fn prepare() -> Unit {
   let f6 = factorial(6)
-  let fib10 = fibonacci(10)
+  let fib10 = fibonacci(12)
 
-  @logcat.info(Some("rain"), "Wallpaper plugin prepared")
-  @logcat.debug(Some("math"), "Factorial of 6: \{f6}")
-  @logcat.debug(Some("math"), "Fibonacci(10): \{fib10}")
+  @tracing.info(Some("rain"), "Wallpaper plugin prepared")
+  @tracing.debug(Some("math"), "Factorial of 6: \{f6}")
+  @tracing.debug(Some("math"), "Fibonacci(12): \{fib10}")
 }
 
 ///|
 pub fn draw() -> Unit {
-  @logcat.debug(Some("rain"), "Drawing wallpaper")
+  @tracing.debug(Some("rain"), "Drawing wallpaper")
 }
 
 ///|
 pub fn close() -> Unit {
-  @logcat.info(Some("rain"), "Wallpaper plugin closed")
+  @tracing.info(Some("rain"), "Wallpaper plugin closed")
 }
 
 ///|

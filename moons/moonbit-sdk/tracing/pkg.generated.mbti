@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "im-neiru/technoir/logcat"
+package "im-neiru/technoir/tracing"
 
 // Values
 pub fn debug(String, String) -> Unit

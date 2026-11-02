@@ -1,15 +1,21 @@
-mod ffi;
+mod api;
+mod ext_wallpaper;
+mod instance_state;
 mod package;
-
-#[cfg(test)]
-mod tests;
 
 use std::path::Path;
 
 use triomphe::Arc;
-use wasmtime::{Config, Engine, Instance, Linker, Module, Store};
+use wasmtime::{
+    Config, Engine, Store,
+    component::{Component, Linker},
+};
 
-use self::ffi::HostState;
+pub use self::api::{
+    INITIAL_RECORD_CAPACITY, MAX_RECORD_COUNT, TraceField, TraceLevel, TraceRecord,
+    TraceRecordKind, TraceValue, TracingBuffer,
+};
+use self::instance_state::InstanceState;
 pub use self::package::PluginPackage;
 
 #[derive(Clone)]
@@ -18,25 +24,28 @@ pub struct PluginDriver {
 }
 
 pub struct PluginInstance {
-    store: Store<HostState>,
-    instance: Instance,
+    store: Store<InstanceState>,
+    instance: ext_wallpaper::bindings::ExtWallpaper,
 }
 
 impl PluginDriver {
     pub fn new() -> wasmtime::Result<Self> {
-        let engine = Engine::new(&Config::new())?;
+        let mut config = Config::new();
+        config.wasm_component_model(true);
+        let engine = Engine::new(&config)?;
         Ok(Self {
             engine: Arc::new(engine),
         })
     }
 
     pub fn load(&self, package: &PluginPackage) -> wasmtime::Result<PluginInstance> {
-        let module = Module::from_file(&self.engine, package.wasm_module_path())?;
-        let mut linker = Linker::<HostState>::new(&self.engine);
-        ffi::add_to_linker(&mut linker)?;
+        let component = Component::from_file(&self.engine, package.wasm_module_path())?;
+        let mut linker = Linker::<InstanceState>::new(&self.engine);
+        api::add_to_linker(&mut linker)?;
 
-        let mut store = Store::new(&self.engine, HostState::default());
-        let instance = linker.instantiate(&mut store, &module)?;
+        let mut store = Store::new(&self.engine, InstanceState::default());
+        let instance =
+            ext_wallpaper::bindings::ExtWallpaper::instantiate(&mut store, &component, &linker)?;
 
         Ok(PluginInstance { store, instance })
     }
@@ -53,13 +62,21 @@ impl PluginDriver {
 
 impl PluginInstance {
     pub fn call_unit_export(&mut self, export: &str) -> wasmtime::Result<()> {
-        let function = self
-            .instance
-            .get_typed_func::<(), ()>(&mut self.store, export)?;
-        function.call(&mut self.store, ())
+        match export {
+            "prepare" => self.instance.call_prepare(&mut self.store),
+            "draw" => self.instance.call_draw(&mut self.store),
+            "close" => self.instance.call_close(&mut self.store),
+            _ => Err(wasmtime::format_err!(
+                "unknown unit export `{export}` for plugin"
+            )),
+        }
     }
 
-    pub fn logs(&self) -> &[String] {
-        &self.store.data().logs
+    pub fn records(&self) -> &std::collections::VecDeque<TraceRecord> {
+        self.store.data().api.tracing.records()
+    }
+
+    pub fn tracing_buffer(&self) -> &TracingBuffer {
+        &self.store.data().api.tracing
     }
 }

@@ -12,16 +12,20 @@ use windows_sys::{
     w,
 };
 
+use super::desktop_handles::DesktopHandles;
 use crate::errors::WindowsOsError;
 
 pub(in super::super) struct Worker {
     pub(super) instance: NonNull<c_void>,
     pub(super) ui_atom: NonZeroU16,
     pub(super) wallpaper_atom: NonZeroU16,
+    pub(super) desktop_handles: DesktopHandles,
 }
 
 impl Worker {
     pub(in super::super) fn new() -> Result<Self, WindowsOsError> {
+        let desktop_handles = DesktopHandles::find();
+
         let Some(instance) = NonNull::new(unsafe { GetModuleHandleW(ptr::null()) }) else {
             return Err(WindowsOsError::FailedToGetModuleHandle);
         };
@@ -69,6 +73,7 @@ impl Worker {
             instance,
             ui_atom,
             wallpaper_atom,
+            desktop_handles,
         })
     }
 

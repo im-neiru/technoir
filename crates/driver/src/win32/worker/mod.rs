@@ -13,19 +13,22 @@ use windows_sys::{
 };
 
 use super::desktop_handles::DesktopHandles;
-use crate::errors::WindowsOsError;
+use crate::{errors::WindowsOsError, monitor::Monitor};
 
 pub(in super::super) struct Worker {
     pub(super) instance: NonNull<c_void>,
     pub(super) ui_atom: NonZeroU16,
     pub(super) wallpaper_atom: NonZeroU16,
     pub(super) desktop_handles: DesktopHandles,
+    pub(super) monitors: Box<[Monitor]>,
 }
 
 impl Worker {
     pub(in super::super) fn new() -> Result<Self, WindowsOsError> {
         let desktop_handles =
             DesktopHandles::find().ok_or(WindowsOsError::FailedToRetrieveDesktopHandles)?;
+
+        let monitors = Monitor::get_monitors();
 
         let Some(instance) = NonNull::new(unsafe { GetModuleHandleW(ptr::null()) }) else {
             return Err(WindowsOsError::FailedToGetModuleHandle);
@@ -75,6 +78,7 @@ impl Worker {
             ui_atom,
             wallpaper_atom,
             desktop_handles,
+            monitors,
         })
     }
 

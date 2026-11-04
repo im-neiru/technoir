@@ -2,4 +2,5 @@ package technoir:plugin@0.1.0;
 
 world api {
     import tracing;
+    import math;
 }

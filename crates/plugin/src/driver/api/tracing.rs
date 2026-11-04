@@ -122,5 +122,5 @@ impl bindings::technoir::plugin::tracing::Host for super::super::InstanceState {
 pub(in crate::driver) fn add_to_linker(
     linker: &mut Linker<super::super::InstanceState>,
 ) -> wasmtime::Result<()> {
-    bindings::Api::add_to_linker::<_, HasSelf<_>>(linker, |state| state)
+    bindings::technoir::plugin::tracing::add_to_linker::<_, HasSelf<_>>(linker, |state| state)
 }

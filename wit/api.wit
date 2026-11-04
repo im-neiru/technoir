@@ -1,5 +1,6 @@
 package technoir:plugin@0.1.0;
 
 world api {
-    import logcat;
+    import tracing;
+    import math;
 }

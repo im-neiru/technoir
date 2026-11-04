@@ -17,7 +17,7 @@ impl HasDisplayHandle for DisplayHandle {
 
 impl From<DisplayHandle> for Box<dyn WgpuHasDisplayHandle> {
     #[inline]
-    fn from(val: DisplayHandle) -> Self {
+    fn from(_: DisplayHandle) -> Self {
         Box::new(DisplayHandle)
     }
 }

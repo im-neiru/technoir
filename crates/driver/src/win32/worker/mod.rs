@@ -24,7 +24,8 @@ pub(in super::super) struct Worker {
 
 impl Worker {
     pub(in super::super) fn new() -> Result<Self, WindowsOsError> {
-        let desktop_handles = DesktopHandles::find();
+        let desktop_handles =
+            DesktopHandles::find().ok_or(WindowsOsError::FailedToRetrieveDesktopHandles)?;
 
         let Some(instance) = NonNull::new(unsafe { GetModuleHandleW(ptr::null()) }) else {
             return Err(WindowsOsError::FailedToGetModuleHandle);

@@ -4,7 +4,9 @@ use core::{
 };
 
 use windows_sys::{
-    Win32::{Graphics::Gdi::*, System::Threading::Sleep, UI::WindowsAndMessaging::*},
+    Win32::{
+        Foundation::HWND, Graphics::Gdi::*, System::Threading::Sleep, UI::WindowsAndMessaging::*,
+    },
     w,
 };
 
@@ -16,19 +18,21 @@ pub(crate) struct DesktopHandles {
     pub(super) worker_w: Option<NonNull<c_void>>,
 }
 
-impl DesktopHandles {
-    pub(super) fn find() -> Self {
-        unsafe {
-            let progman =
-                NonNull::new(FindWindowW(w!("Progman"), null_mut())).expect("Progman not found");
+const CLASS_PROGMAN: *const u16 = w!("Progman");
+const CLASS_SHELL_DEFVIEW: *const u16 = w!("SHELLDLL_DefView");
+const CLASS_SYS_LIST_VIEW: *const u16 = w!("SysListView32");
+const CLASS_WORKER_W: *const u16 = w!("WorkerW");
 
-            let mut shelldll_defview = None;
-            let mut icons_hwnd = None;
-            let mut worker_w = None;
+const SPAWN_WORKER_W_MESSAGE: u32 = 0x052C;
+
+impl DesktopHandles {
+    pub(super) fn find() -> Option<Self> {
+        unsafe {
+            let progman = NonNull::new(FindWindowW(CLASS_PROGMAN, null_mut()))?;
 
             SendMessageTimeoutW(
                 progman.as_ptr(),
-                0x052C,
+                SPAWN_WORKER_W_MESSAGE,
                 0,
                 0,
                 SMTO_NORMAL,
@@ -36,37 +40,21 @@ impl DesktopHandles {
                 null_mut(),
             );
 
-            Sleep(500);
+            let shelldll_defview =
+                find_last_child_with_class(progman.as_ptr(), CLASS_SHELL_DEFVIEW);
+            let worker_w = find_last_child_with_class(progman.as_ptr(), CLASS_WORKER_W);
 
-            let mut child = GetWindow(progman.as_ptr(), GW_CHILD);
+            let icons_hwnd = match shelldll_defview {
+                Some(defview) => find_last_child_with_class(defview.as_ptr(), CLASS_SYS_LIST_VIEW),
+                None => None,
+            };
 
-            while !child.is_null() {
-                let mut class_name = [0u16; 256];
-                let len = GetClassNameW(child, class_name.as_mut_ptr(), 256);
-                let name = String::from_utf16_lossy(&class_name[..len as usize]);
-
-                if name == "SHELLDLL_DefView" {
-                    shelldll_defview = NonNull::new(child);
-
-                    icons_hwnd = NonNull::new(FindWindowExW(
-                        child,
-                        null_mut(),
-                        w!("SysListView32"),
-                        null_mut(),
-                    ));
-                } else if name == "WorkerW" {
-                    worker_w = NonNull::new(child);
-                }
-
-                child = GetWindow(child, GW_HWNDNEXT);
-            }
-
-            Self {
+            Some(Self {
                 progman,
                 shelldll_defview,
                 icons_hwnd,
                 worker_w,
-            }
+            })
         }
     }
 
@@ -96,5 +84,24 @@ impl DesktopHandles {
     #[inline]
     pub(super) fn is_desktop_handle(&self, hwnd: NonNull<c_void>) -> bool {
         hwnd == self.progman || Some(hwnd) == self.shelldll_defview
+    }
+}
+
+unsafe fn find_last_child_with_class(
+    parent: HWND,
+    class_name: *const u16,
+) -> Option<NonNull<c_void>> {
+    let mut last_match = None;
+    let mut previous_child = null_mut();
+
+    loop {
+        let next_child = unsafe { FindWindowExW(parent, previous_child, class_name, null_mut()) };
+
+        let Some(next_match) = NonNull::new(next_child) else {
+            return last_match;
+        };
+
+        last_match = Some(next_match);
+        previous_child = next_child;
     }
 }

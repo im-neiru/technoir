@@ -1,3 +1,4 @@
+mod desktop_handles;
 mod get_client_area;
 mod handles;
 mod ui_window;

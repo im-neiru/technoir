@@ -3,17 +3,24 @@
 ///|
 #doc(hidden)
 pub fn wasmExportPrepare() -> Unit {
-  let _ = prepare()
+
+      let _ = prepare();
+
 }
 
 ///|
 #doc(hidden)
 pub fn wasmExportDraw() -> Unit {
-  let _ = draw()
+
+      let _ = draw();
+
 }
 
 ///|
 #doc(hidden)
 pub fn wasmExportClose() -> Unit {
-  let _ = close()
+
+      let _ = close();
+
 }
+

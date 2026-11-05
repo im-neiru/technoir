@@ -26,7 +26,7 @@ pub(in super::super) struct Worker {
     pub(super) wallpaper_atom: NonZeroU16,
     pub(super) desktop_handles: DesktopHandles,
     pub(super) wallpaper_windows: Vec<WallpaperWindow>,
-    pub(super) render_worker: render_worker::RenderWorker,
+    pub(super) render_worker: Option<render_worker::RenderWorker>,
 }
 
 impl Worker {
@@ -105,12 +105,14 @@ impl Worker {
             wallpaper_atom,
             desktop_handles,
             wallpaper_windows,
-            render_worker,
+            render_worker: Some(render_worker),
         })
     }
 
-    pub(in super::super) fn run(self) {
-        self.render_worker.resume();
+    pub(in super::super) fn run(mut self) {
+        if let Some(worker) = self.render_worker.as_ref() {
+            worker.resume();
+        }
 
         unsafe {
             let mut msg = mem::zeroed();
@@ -129,6 +131,10 @@ impl Worker {
                     }
                 }
             }
+        }
+
+        if let Some(worker) = self.render_worker.take() {
+            worker.shutdown();
         }
     }
 

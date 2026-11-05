@@ -1,5 +1,6 @@
 use core::{
     ffi::c_void,
+    num::NonZeroU8,
     ptr::{self, NonNull},
 };
 
@@ -8,13 +9,20 @@ use windows_sys::{
     w,
 };
 
+use renderer::TargetSurface;
+
 use crate::{
     errors::{StartupError, WindowsOsError},
     monitor::Monitor,
+    win32::{
+        get_client_area::get_client_area,
+        handles::{DisplayHandle, WindowHandle},
+    },
 };
 
 pub(in super::super) struct WallpaperWindow {
     handle: NonNull<c_void>,
+    target: TargetSurface,
 }
 
 impl super::worker::Worker {
@@ -69,9 +77,18 @@ impl super::worker::Worker {
                 ShowWindow(handle.as_ptr(), SW_SHOW);
             }
 
-            let win = WallpaperWindow { handle };
+            let window_handle = WindowHandle::new(self.instance, handle);
+            let [width, height] = get_client_area(handle);
 
-            buf.push(win);
+            let target = pollster::block_on(async move {
+                TargetSurface::new(DisplayHandle, window_handle, width, height, unsafe {
+                    NonZeroU8::new_unchecked(3)
+                })
+                .await
+            })
+            .map_err(StartupError::GraphicsInit)?;
+
+            buf.push(WallpaperWindow { handle, target });
         }
 
         Ok(buf.into_boxed_slice())

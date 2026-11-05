@@ -54,7 +54,7 @@ impl super::worker::Worker {
 
         let target = pollster::block_on(async move {
             TargetSurface::new(DisplayHandle, window_handle, width, height, unsafe {
-                NonZeroU8::new_unchecked(3)
+                NonZeroU8::new_unchecked(2)
             })
             .await
         })

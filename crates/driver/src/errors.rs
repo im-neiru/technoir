@@ -8,7 +8,9 @@ pub enum StartupError {
 
 #[derive(Clone, Copy, Debug)]
 pub enum WindowsOsError {
+    FailedToRetrieveDesktopHandles,
     FailedToGetModuleHandle,
     FailedToRegisterWindowClass,
     FailedToCreateWindow { error_code: u32 },
+    FailedToCreateRenderThread { error_code: u32 },
 }

@@ -2,6 +2,7 @@
 mod win32;
 
 pub mod errors;
+pub mod monitor;
 
 pub struct WallpaperWindow(WallpaperWindowInner);
 

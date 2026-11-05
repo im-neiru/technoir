@@ -1,4 +1,5 @@
 mod event_handler;
+mod render_worker;
 
 use core::{
     ffi::c_void,
@@ -8,23 +9,48 @@ use core::{
 };
 
 use windows_sys::{
-    Win32::{System::LibraryLoader::GetModuleHandleW, UI::WindowsAndMessaging::*},
+    Win32::{
+        Graphics::Gdi::COLOR_WINDOW, System::LibraryLoader::GetModuleHandleW,
+        UI::WindowsAndMessaging::*,
+    },
+    core::PCWSTR,
     w,
 };
 
-use crate::errors::WindowsOsError;
+use super::{desktop_handles::DesktopHandles, wallpaper_window::WallpaperWindow};
+use crate::errors::{StartupError, WindowsOsError};
 
 pub(in super::super) struct Worker {
     pub(super) instance: NonNull<c_void>,
     pub(super) ui_atom: NonZeroU16,
     pub(super) wallpaper_atom: NonZeroU16,
+    pub(super) desktop_handles: DesktopHandles,
+    pub(super) wallpaper_windows: Vec<WallpaperWindow>,
+    pub(super) render_worker: render_worker::RenderWorker,
 }
 
 impl Worker {
-    pub(in super::super) fn new() -> Result<Self, WindowsOsError> {
+    pub(in super::super) fn new() -> Result<Self, StartupError> {
+        let desktop_handles = DesktopHandles::find().ok_or(StartupError::WindowOs(
+            WindowsOsError::FailedToRetrieveDesktopHandles,
+        ))?;
+
         let Some(instance) = NonNull::new(unsafe { GetModuleHandleW(ptr::null()) }) else {
-            return Err(WindowsOsError::FailedToGetModuleHandle);
+            return Err(StartupError::WindowOs(
+                WindowsOsError::FailedToGetModuleHandle,
+            ));
         };
+
+        let app_icon = unsafe {
+            LoadImageW(
+                instance.as_ptr(),
+                1 as PCWSTR,
+                IMAGE_ICON,
+                0,
+                0,
+                LR_DEFAULTSIZE | LR_SHARED,
+            )
+        } as HICON;
 
         let ui_class = WNDCLASSEXW {
             cbSize: mem::size_of::<WNDCLASSEXW>() as u32,
@@ -33,9 +59,9 @@ impl Worker {
             cbClsExtra: 0,
             cbWndExtra: 0,
             hInstance: instance.as_ptr(),
-            hIcon: ptr::null_mut(),
+            hIcon: app_icon,
             hCursor: unsafe { LoadCursorW(ptr::null_mut(), IDC_ARROW) },
-            hbrBackground: ptr::null_mut(),
+            hbrBackground: (COLOR_WINDOW + 1) as _,
             lpszMenuName: ptr::null(),
             lpszClassName: w!("technoir_ui"),
             hIconSm: ptr::null_mut(),
@@ -48,31 +74,44 @@ impl Worker {
             cbClsExtra: 0,
             cbWndExtra: 0,
             hInstance: instance.as_ptr(),
-            hIcon: ptr::null_mut(),
+            hIcon: app_icon,
             hCursor: unsafe { LoadCursorW(ptr::null_mut(), IDC_ARROW) },
-            hbrBackground: ptr::null_mut(),
+            hbrBackground: (COLOR_WINDOW + 1) as _,
             lpszMenuName: ptr::null(),
             lpszClassName: w!("technoir_wallpaper"),
             hIconSm: ptr::null_mut(),
         };
 
-        let Some(ui_atom) = NonZeroU16::new(unsafe { RegisterClassExW(&ui_class) }) else {
-            return Err(WindowsOsError::FailedToRegisterWindowClass);
+        let (Some(ui_atom), Some(wallpaper_atom)) = (
+            NonZeroU16::new(unsafe { RegisterClassExW(&ui_class) }),
+            NonZeroU16::new(unsafe { RegisterClassExW(&wallpaper_class) }),
+        ) else {
+            return Err(StartupError::WindowOs(
+                WindowsOsError::FailedToRegisterWindowClass,
+            ));
         };
 
-        let Some(wallpaper_atom) = NonZeroU16::new(unsafe { RegisterClassExW(&wallpaper_class) })
-        else {
-            return Err(WindowsOsError::FailedToRegisterWindowClass);
-        };
+        let wallpaper_windows = Self::create_wallpaper_windows(
+            instance,
+            wallpaper_atom.get() as usize as *const u16,
+            &desktop_handles,
+        )?;
+
+        let render_worker = render_worker::RenderWorker::new(instance, &wallpaper_windows)?;
 
         Ok(Self {
             instance,
             ui_atom,
             wallpaper_atom,
+            desktop_handles,
+            wallpaper_windows,
+            render_worker,
         })
     }
 
     pub(in super::super) fn run(self) {
+        self.render_worker.resume();
+
         unsafe {
             let mut msg = mem::zeroed();
 

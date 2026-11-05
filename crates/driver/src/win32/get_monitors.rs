@@ -1,6 +1,6 @@
 use core::{
     mem,
-    ptr::{self},
+    ptr::{self, NonNull},
 };
 
 use windows_sys::{
@@ -12,7 +12,7 @@ use windows_sys::{
     core::BOOL,
 };
 
-use crate::monitor::{Monitor, MonitorBounds};
+use crate::monitor::{Monitor, MonitorBounds, MonitorHandle, MonitorHandleValue};
 
 impl Monitor {
     pub fn get_monitors() -> Box<[Self]> {
@@ -47,6 +47,11 @@ unsafe extern "system" fn monitor_enum_proc(
     _rect: *mut RECT,
     lparam: isize,
 ) -> BOOL {
+    let Some(handle) = NonNull::new(hmonitor) else {
+        return TRUE;
+    };
+
+    let handle = MonitorHandle(MonitorHandleValue::Win32(handle));
     let monitors = unsafe { &mut *(lparam as *mut Vec<Monitor>) };
 
     let Some(info) = query_monitor_info(hmonitor) else {
@@ -56,6 +61,7 @@ unsafe extern "system" fn monitor_enum_proc(
     let rect = info.monitorInfo.rcMonitor;
 
     monitors.push(Monitor {
+        handle,
         name: monitor_name(&info.szDevice).into_boxed_str(),
         bounds: MonitorBounds {
             x: rect.left,

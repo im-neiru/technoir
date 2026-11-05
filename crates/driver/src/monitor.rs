@@ -1,4 +1,4 @@
-use core::{ffi::c_void, ptr::NonNull};
+use core::num::NonZeroUsize;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Monitor {
@@ -21,5 +21,5 @@ pub struct MonitorHandle(pub(super) MonitorHandleValue);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(super) enum MonitorHandleValue {
     #[cfg(target_family = "windows")]
-    Win32(NonNull<c_void>),
+    Win32(NonZeroUsize),
 }

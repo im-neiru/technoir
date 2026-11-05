@@ -51,7 +51,7 @@ unsafe extern "system" fn monitor_enum_proc(
         return TRUE;
     };
 
-    let handle = MonitorHandle(MonitorHandleValue::Win32(handle));
+    let handle = MonitorHandle(MonitorHandleValue::Win32(handle.addr()));
     let monitors = unsafe { &mut *(lparam as *mut Vec<Monitor>) };
 
     let Some(info) = query_monitor_info(hmonitor) else {

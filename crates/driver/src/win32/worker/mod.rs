@@ -26,6 +26,7 @@ pub(in super::super) struct Worker {
     pub(super) wallpaper_atom: NonZeroU16,
     pub(super) desktop_handles: DesktopHandles,
     pub(super) wallpaper_windows: Vec<WallpaperWindow>,
+    pub(super) render_worker: render_worker::RenderWorker,
 }
 
 impl Worker {
@@ -96,16 +97,21 @@ impl Worker {
             &desktop_handles,
         )?;
 
+        let render_worker = render_worker::RenderWorker::new(instance, &wallpaper_windows)?;
+
         Ok(Self {
             instance,
             ui_atom,
             wallpaper_atom,
             desktop_handles,
             wallpaper_windows,
+            render_worker,
         })
     }
 
     pub(in super::super) fn run(self) {
+        self.render_worker.resume();
+
         unsafe {
             let mut msg = mem::zeroed();
 

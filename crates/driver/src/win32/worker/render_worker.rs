@@ -6,12 +6,12 @@ use core::{
 };
 
 use indexmap::IndexMap;
-use renderer::TargetSurface;
+use renderer::{TargetSurface, WallpaperRenderer};
 use rustc_hash::FxBuildHasher;
 use triomphe::Arc;
 use windows_sys::Win32::{
     Foundation::GetLastError,
-    System::Threading::{CREATE_SUSPENDED, CreateThread},
+    System::Threading::{CREATE_SUSPENDED, CreateThread, ResumeThread, Sleep},
 };
 
 use super::super::{
@@ -52,7 +52,8 @@ impl RenderWorker {
             targets.insert(w.monitor, target);
         }
 
-        let state = Arc::new(State { targets });
+        let renderer = WallpaperRenderer::new();
+        let state = Arc::new(State { renderer, targets });
 
         let Some(thread) = NonNull::new(unsafe {
             CreateThread(
@@ -76,9 +77,15 @@ impl RenderWorker {
             thread_id: unsafe { thread_id.assume_init() },
         })
     }
+
+    #[inline]
+    pub(super) fn resume(&self) {
+        unsafe { ResumeThread(self.thread.as_ptr()) };
+    }
 }
 
 struct State {
+    renderer: WallpaperRenderer,
     targets: IndexMap<NonZeroUsize, TargetSurface, FxBuildHasher>,
 }
 
@@ -86,6 +93,13 @@ unsafe extern "system" fn thread_proc(ptr: *mut c_void) -> u32 {
     let Some(state) = (unsafe { ptr.cast::<State>().as_mut() }) else {
         return 0;
     };
+
+    loop {
+        for (_, target) in state.targets.iter() {
+            state.renderer.render(target);
+        }
+        unsafe { Sleep(1) };
+    }
 
     0
 }

@@ -12,4 +12,5 @@ pub enum WindowsOsError {
     FailedToGetModuleHandle,
     FailedToRegisterWindowClass,
     FailedToCreateWindow { error_code: u32 },
+    FailedToCreateRenderThread { error_code: u32 },
 }

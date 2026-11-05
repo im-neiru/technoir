@@ -1,4 +1,5 @@
 mod event_handler;
+mod render_loop;
 
 use core::{
     ffi::c_void,

@@ -1,5 +1,5 @@
 mod event_handler;
-mod render_loop;
+mod render_worker;
 
 use core::{
     ffi::c_void,

@@ -17,26 +17,27 @@ use windows_sys::{
     w,
 };
 
-use super::desktop_handles::DesktopHandles;
-use crate::{errors::WindowsOsError, monitor::Monitor};
+use super::{desktop_handles::DesktopHandles, wallpaper_window::WallpaperWindow};
+use crate::errors::{StartupError, WindowsOsError};
 
 pub(in super::super) struct Worker {
     pub(super) instance: NonNull<c_void>,
     pub(super) ui_atom: NonZeroU16,
     pub(super) wallpaper_atom: NonZeroU16,
     pub(super) desktop_handles: DesktopHandles,
-    pub(super) monitors: Box<[Monitor]>,
+    pub(super) wallpaper_windows: Vec<WallpaperWindow>,
 }
 
 impl Worker {
-    pub(in super::super) fn new() -> Result<Self, WindowsOsError> {
-        let desktop_handles =
-            DesktopHandles::find().ok_or(WindowsOsError::FailedToRetrieveDesktopHandles)?;
-
-        let monitors = Monitor::get_monitors();
+    pub(in super::super) fn new() -> Result<Self, StartupError> {
+        let desktop_handles = DesktopHandles::find().ok_or(StartupError::WindowOs(
+            WindowsOsError::FailedToRetrieveDesktopHandles,
+        ))?;
 
         let Some(instance) = NonNull::new(unsafe { GetModuleHandleW(ptr::null()) }) else {
-            return Err(WindowsOsError::FailedToGetModuleHandle);
+            return Err(StartupError::WindowOs(
+                WindowsOsError::FailedToGetModuleHandle,
+            ));
         };
 
         let app_icon = unsafe {
@@ -80,21 +81,27 @@ impl Worker {
             hIconSm: ptr::null_mut(),
         };
 
-        let Some(ui_atom) = NonZeroU16::new(unsafe { RegisterClassExW(&ui_class) }) else {
-            return Err(WindowsOsError::FailedToRegisterWindowClass);
+        let (Some(ui_atom), Some(wallpaper_atom)) = (
+            NonZeroU16::new(unsafe { RegisterClassExW(&ui_class) }),
+            NonZeroU16::new(unsafe { RegisterClassExW(&wallpaper_class) }),
+        ) else {
+            return Err(StartupError::WindowOs(
+                WindowsOsError::FailedToRegisterWindowClass,
+            ));
         };
 
-        let Some(wallpaper_atom) = NonZeroU16::new(unsafe { RegisterClassExW(&wallpaper_class) })
-        else {
-            return Err(WindowsOsError::FailedToRegisterWindowClass);
-        };
+        let wallpaper_windows = Self::create_wallpaper_windows(
+            instance,
+            wallpaper_atom.get() as usize as *const u16,
+            &desktop_handles,
+        )?;
 
         Ok(Self {
             instance,
             ui_atom,
             wallpaper_atom,
             desktop_handles,
-            monitors,
+            wallpaper_windows,
         })
     }
 

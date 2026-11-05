@@ -13,9 +13,8 @@ pub(super) use worker::Worker;
 use super::errors::StartupError;
 
 pub fn run() -> Result<(), StartupError> {
-    let mut worker = Worker::new().map_err(StartupError::WindowOs)?;
+    let worker = Worker::new()?;
 
-    let _wallpaper_windows = worker.create_wallpaper_windows()?;
     let ui_window = worker.create_ui_window()?;
 
     ui_window.show();

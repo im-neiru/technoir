@@ -1,45 +1,43 @@
 use core::{
     ffi::c_void,
-    num::NonZeroU8,
+    num::NonZeroUsize,
     ptr::{self, NonNull},
 };
 
 use windows_sys::{
     Win32::{Foundation::GetLastError, UI::WindowsAndMessaging::*},
+    core::PCWSTR,
     w,
 };
 
-use renderer::TargetSurface;
-
 use crate::{
     errors::{StartupError, WindowsOsError},
-    monitor::Monitor,
-    win32::{
-        get_client_area::get_client_area,
-        handles::{DisplayHandle, WindowHandle},
-    },
+    monitor::{Monitor, MonitorHandleValue},
+    win32::desktop_handles::DesktopHandles,
 };
 
 pub(in super::super) struct WallpaperWindow {
-    handle: NonNull<c_void>,
-    target: TargetSurface,
+    pub(super) handle: NonNull<c_void>,
+    pub(super) monitor: NonZeroUsize,
 }
 
 impl super::worker::Worker {
     #[inline]
     pub(crate) fn create_wallpaper_windows(
-        &mut self,
-    ) -> Result<Box<[WallpaperWindow]>, StartupError> {
-        self.monitors = Monitor::get_monitors();
+        instance: NonNull<c_void>,
+        atom: PCWSTR,
+        desktop_handles: &DesktopHandles,
+    ) -> Result<Vec<WallpaperWindow>, StartupError> {
+        let monitors = Monitor::get_monitors();
 
-        let mut buf = Vec::with_capacity(self.monitors.len());
+        let mut buf = Vec::with_capacity(monitors.len());
 
-        for m in self.monitors.iter() {
-            let parent = self.desktop_handles.get_target_parent().as_ptr();
+        for m in monitors.iter() {
+            let parent = desktop_handles.get_target_parent().as_ptr();
             let Some(handle) = NonNull::new(unsafe {
                 CreateWindowExW(
                     WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
-                    self.make_in_wallpaper_atom(),
+                    atom.cast(),
                     w!("Technoir"),
                     WS_POPUP,
                     m.bounds.x,
@@ -48,7 +46,7 @@ impl super::worker::Worker {
                     m.bounds.height as i32,
                     parent,
                     ptr::null_mut(),
-                    self.instance.as_ptr(),
+                    instance.as_ptr(),
                     ptr::null_mut(),
                 )
             }) else {
@@ -76,21 +74,16 @@ impl super::worker::Worker {
                 ShowWindow(handle.as_ptr(), SW_SHOW);
             }
 
-            let window_handle = WindowHandle::new(self.instance, handle);
-            let [width, height] = get_client_area(handle);
+            let monitor = match m.handle.0 {
+                MonitorHandleValue::Win32(monitor) => monitor,
+                #[allow(unreachable_patterns)]
+                _ => unreachable!(),
+            };
 
-            let target = pollster::block_on(async move {
-                TargetSurface::new(DisplayHandle, window_handle, width, height, unsafe {
-                    NonZeroU8::new_unchecked(3)
-                })
-                .await
-            })
-            .map_err(StartupError::GraphicsInit)?;
-
-            buf.push(WallpaperWindow { handle, target });
+            buf.push(WallpaperWindow { handle, monitor });
         }
 
-        Ok(buf.into_boxed_slice())
+        Ok(buf)
     }
 }
 

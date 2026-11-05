@@ -39,7 +39,7 @@ impl super::worker::Worker {
             let Some(handle) = NonNull::new(unsafe {
                 CreateWindowExW(
                     WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
-                    self.make_in_ui_atom(),
+                    self.make_in_wallpaper_atom(),
                     w!("Technoir"),
                     WS_POPUP,
                     m.bounds.x,
@@ -61,7 +61,6 @@ impl super::worker::Worker {
 
             unsafe {
                 SetLayeredWindowAttributes(handle.as_ptr(), 0, 255, LWA_ALPHA);
-
                 SetParent(handle.as_ptr(), parent);
 
                 SetWindowPos(

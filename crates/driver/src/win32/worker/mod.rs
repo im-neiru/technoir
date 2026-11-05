@@ -8,7 +8,11 @@ use core::{
 };
 
 use windows_sys::{
-    Win32::{System::LibraryLoader::GetModuleHandleW, UI::WindowsAndMessaging::*},
+    Win32::{
+        Graphics::Gdi::COLOR_WINDOW, System::LibraryLoader::GetModuleHandleW,
+        UI::WindowsAndMessaging::*,
+    },
+    core::PCWSTR,
     w,
 };
 
@@ -34,6 +38,17 @@ impl Worker {
             return Err(WindowsOsError::FailedToGetModuleHandle);
         };
 
+        let app_icon = unsafe {
+            LoadImageW(
+                instance.as_ptr(),
+                1 as PCWSTR,
+                IMAGE_ICON,
+                0,
+                0,
+                LR_DEFAULTSIZE | LR_SHARED,
+            )
+        } as HICON;
+
         let ui_class = WNDCLASSEXW {
             cbSize: mem::size_of::<WNDCLASSEXW>() as u32,
             style: CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
@@ -41,9 +56,9 @@ impl Worker {
             cbClsExtra: 0,
             cbWndExtra: 0,
             hInstance: instance.as_ptr(),
-            hIcon: ptr::null_mut(),
+            hIcon: app_icon,
             hCursor: unsafe { LoadCursorW(ptr::null_mut(), IDC_ARROW) },
-            hbrBackground: ptr::null_mut(),
+            hbrBackground: (COLOR_WINDOW + 1) as _,
             lpszMenuName: ptr::null(),
             lpszClassName: w!("technoir_ui"),
             hIconSm: ptr::null_mut(),
@@ -56,9 +71,9 @@ impl Worker {
             cbClsExtra: 0,
             cbWndExtra: 0,
             hInstance: instance.as_ptr(),
-            hIcon: ptr::null_mut(),
+            hIcon: app_icon,
             hCursor: unsafe { LoadCursorW(ptr::null_mut(), IDC_ARROW) },
-            hbrBackground: ptr::null_mut(),
+            hbrBackground: (COLOR_WINDOW + 1) as _,
             lpszMenuName: ptr::null(),
             lpszClassName: w!("technoir_wallpaper"),
             hIconSm: ptr::null_mut(),
